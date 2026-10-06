@@ -27,3 +27,6 @@
 
     - name: Verify | auditd
       ansible.builtin.import_tasks: verify/auditd.yml
+
+    - name: Verify | updates
+      ansible.builtin.import_tasks: verify/updates.yml

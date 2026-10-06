@@ -1,0 +1,17 @@
+---
+- name: Updates | Configure dnf-automatic
+  community.general.ini_file:
+    path: /etc/dnf/automatic.conf
+    section: "{{ item.section }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    mode: "0644"
+  loop:
+    - { section: commands, option: upgrade_type, value: "{{ 'security' if updates_security_only | bool else 'default' }}" }
+    - { section: commands, option: download_updates, value: "yes" }
+    - { section: commands, option: apply_updates, value: "{{ 'yes' if updates_apply | bool else 'no' }}" }
+    - { section: commands, option: reboot, value: "{{ 'when-needed' if updates_automatic_reboot | bool else 'never' }}" }
+    - { section: emitters, option: emit_via, value: stdio }
+  loop_control:
+    label: "[{{ item.section }}] {{ item.option }} = {{ item.value }}"
+  when: not updates_check_mode_pending

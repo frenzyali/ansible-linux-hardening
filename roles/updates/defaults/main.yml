@@ -1,0 +1,15 @@
+---
+# Master switch for the whole role.
+updates_enabled: true
+
+# true: install security updates only (fewer surprises on a server).
+# false: also install regular bug-fix updates.
+updates_security_only: true
+# Install updates automatically, not just download them.
+updates_apply: true
+# Reboot automatically when an update requires it (kernel, libc).
+updates_automatic_reboot: false
+# Local time for automatic reboots (Ubuntu only).
+updates_reboot_time: "03:30"
+# Remove dependencies that are no longer needed after an upgrade (Ubuntu).
+updates_remove_unused_dependencies: true

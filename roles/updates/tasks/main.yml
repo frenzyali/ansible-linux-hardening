@@ -1,0 +1,41 @@
+---
+- name: Updates | Skip role when disabled
+  ansible.builtin.meta: end_role
+  when: not updates_enabled | bool
+  tags: [always]
+
+- name: Updates | Load OS family variables
+  ansible.builtin.include_vars: "{{ lookup('ansible.builtin.first_found', updates_vars_files) }}"
+  vars:
+    updates_vars_files:
+      files:
+        - "{{ ansible_facts['os_family'] }}.yml"
+      paths:
+        - "{{ role_path }}/vars"
+  tags: [always]
+
+- name: Updates | Install update tooling
+  ansible.builtin.package:
+    name: "{{ updates_os_packages }}"
+    state: present
+  register: updates_packages_install
+  tags: [updates_install]
+
+- name: Updates | Configure unattended-upgrades
+  ansible.builtin.import_tasks: unattended_upgrades.yml
+  when: ansible_facts['os_family'] == 'Debian'
+  tags: [updates_config]
+
+- name: Updates | Configure dnf-automatic
+  ansible.builtin.import_tasks: dnf_automatic.yml
+  when: ansible_facts['os_family'] == 'RedHat'
+  tags: [updates_config]
+
+- name: Updates | Enable update timers
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop: "{{ updates_os_timers }}"
+  when: not updates_check_mode_pending
+  tags: [updates_timers]

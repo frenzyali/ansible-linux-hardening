@@ -1,0 +1,3 @@
+---
+# True only in check mode when the update tooling is not installed yet.
+updates_check_mode_pending: "{{ ansible_check_mode and (updates_packages_install | default({})) is changed }}"

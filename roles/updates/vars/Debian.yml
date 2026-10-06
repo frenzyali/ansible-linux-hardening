@@ -1,0 +1,6 @@
+---
+updates_os_packages:
+  - unattended-upgrades
+updates_os_timers:
+  - apt-daily.timer
+  - apt-daily-upgrade.timer

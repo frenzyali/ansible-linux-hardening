@@ -1,0 +1,28 @@
+---
+argument_specs:
+  main:
+    short_description: Automatic security updates (unattended-upgrades or dnf-automatic).
+    description:
+      - Ubuntu installs unattended-upgrades and replaces the allowed origins with security-only ones.
+      - Rocky Linux installs dnf-automatic with upgrade_type = security and enables its timer.
+      - Automatic reboots are off by default.
+    author: Syed Ali Hussain
+    options:
+      updates_enabled:
+        type: bool
+        description: Run the role at all.
+      updates_security_only:
+        type: bool
+        description: Install only security updates.
+      updates_apply:
+        type: bool
+        description: Install updates automatically, not just download them.
+      updates_automatic_reboot:
+        type: bool
+        description: Reboot automatically when an update requires it.
+      updates_reboot_time:
+        type: str
+        description: Local time for automatic reboots (Ubuntu only).
+      updates_remove_unused_dependencies:
+        type: bool
+        description: Remove unused dependencies after upgrades (Ubuntu only).

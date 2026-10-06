@@ -1,0 +1,16 @@
+// {{ ansible_managed }}
+// Replaces (not extends) the origins from 50unattended-upgrades.
+#clear Unattended-Upgrade::Allowed-Origins;
+#clear Unattended-Upgrade::Origins-Pattern;
+Unattended-Upgrade::Allowed-Origins {
+        "${distro_id}:${distro_codename}-security";
+        "${distro_id}ESMApps:${distro_codename}-apps-security";
+        "${distro_id}ESM:${distro_codename}-infra-security";
+{% if not updates_security_only | bool %}
+        "${distro_id}:${distro_codename}-updates";
+{% endif %}
+};
+
+Unattended-Upgrade::Remove-Unused-Dependencies "{{ 'true' if updates_remove_unused_dependencies | bool else 'false' }}";
+Unattended-Upgrade::Automatic-Reboot "{{ 'true' if updates_automatic_reboot | bool else 'false' }}";
+Unattended-Upgrade::Automatic-Reboot-Time "{{ updates_reboot_time }}";

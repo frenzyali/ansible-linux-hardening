@@ -1,0 +1,4 @@
+---
+# No handlers: apt and dnf-automatic read their configuration each time the
+# timers fire, so nothing needs restarting.
+[]

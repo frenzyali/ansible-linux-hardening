@@ -1,0 +1,57 @@
+---
+- name: Updates | unattended-upgrades checks (Ubuntu)
+  when: ansible_facts['os_family'] == 'Debian'
+  block:
+    # apt-config dump shows the merged configuration of every apt.conf.d file,
+    # so this proves the packaged origins really were replaced.
+    - name: Updates | Dump the effective apt configuration
+      ansible.builtin.command: apt-config dump
+      register: verify_apt_config
+      changed_when: false
+
+    - name: Updates | Assert periodic upgrades on and security origins only
+      ansible.builtin.assert:
+        that:
+          - verify_apt_config.stdout is search('(?m)^APT::Periodic::Unattended-Upgrade "1";$')
+          - verify_apt_config.stdout is search('(?m)^APT::Periodic::Update-Package-Lists "1";$')
+          - verify_origins | length > 0
+          - verify_origins | reject('search', 'security') | list | length == 0
+          - verify_apt_config.stdout is search('(?m)^Unattended-Upgrade::Automatic-Reboot "false";$')
+        quiet: true
+      vars:
+        verify_origins: "{{ verify_apt_config.stdout_lines | select('match', '^Unattended-Upgrade::Allowed-Origins:: ') | list }}"
+
+- name: Updates | dnf-automatic checks (Rocky)
+  when: ansible_facts['os_family'] == 'RedHat'
+  block:
+    - name: Updates | Read dnf-automatic configuration
+      ansible.builtin.slurp:
+        src: /etc/dnf/automatic.conf
+      register: verify_dnf_automatic
+
+    - name: Updates | Assert security-only automatic updates
+      ansible.builtin.assert:
+        that:
+          - verify_dnf_automatic.content | b64decode is search('(?m)^upgrade_type\s*=\s*security$')
+          - verify_dnf_automatic.content | b64decode is search('(?m)^apply_updates\s*=\s*yes$')
+          - verify_dnf_automatic.content | b64decode is search('(?m)^reboot\s*=\s*never$')
+        quiet: true
+
+- name: Updates | Gather service facts
+  ansible.builtin.service_facts:
+
+- name: Updates | Look up the update timers
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+  loop: "{{ ['apt-daily.timer', 'apt-daily-upgrade.timer'] if ansible_facts['os_family'] == 'Debian' else ['dnf-automatic.timer'] }}"
+  register: verify_timers
+
+- name: Updates | Assert the timers are enabled and active
+  ansible.builtin.assert:
+    that:
+      - item.status.UnitFileState == 'enabled'
+      - item.status.ActiveState == 'active'
+    quiet: true
+  loop: "{{ verify_timers.results }}"
+  loop_control:
+    label: "{{ item.item }}"

@@ -1,0 +1,5 @@
+---
+updates_os_packages:
+  - dnf-automatic
+updates_os_timers:
+  - dnf-automatic.timer

@@ -47,3 +47,6 @@
     - role: auditd
       become: true
       tags: [auditd]
+    - role: updates
+      become: true
+      tags: [updates]
