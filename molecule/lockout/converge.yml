@@ -1,9 +1,10 @@
 ---
-# Each case runs the real ssh role with password logins being disabled and
-# must be stopped by the lockout guard. A case "passes" only if the role
-# failed, at the guard task, with the LOCKOUT PROTECTION message. If the role
-# ever completes, the fail task after it trips and the rescue assertion
-# rejects that message, so the converge (and the scenario) fails.
+# Each case runs the real ssh role with an unsafe configuration. Cases 1-3
+# disable password logins and must be stopped by the lockout guard; case 4
+# must be stopped by argument validation. A case "passes" only if the role
+# failed at that exact task with the expected message. If the role ever
+# completes, the fail task after it trips and the rescue assertion rejects
+# that message, so the converge (and the scenario) fails.
 - name: Converge
   hosts: all
   gather_facts: true
@@ -77,4 +78,24 @@
             that:
               - ansible_failed_task.name is search('Refuse to disable password logins')
               - ansible_failed_result.msg is search('LOCKOUT PROTECTION')
+            quiet: true
+
+    - name: "Case 4: unsafe value rejected by argument_specs before any task runs"
+      block:
+        - name: Case 4 | Run the ssh role with root login allowed
+          ansible.builtin.include_role:
+            name: ssh
+          vars:
+            ssh_permit_root_login: "yes"
+            ssh_password_authentication: true
+
+        - name: Case 4 | The role must not get here
+          ansible.builtin.fail:
+            msg: "Argument validation did not reject ssh_permit_root_login: yes."
+      rescue:
+        - name: Case 4 | Assert input validation stopped the role
+          ansible.builtin.assert:
+            that:
+              - ansible_failed_task.name is search('Validating arguments against arg spec')
+              - ansible_failed_result.msg is search('ssh_permit_root_login')
             quiet: true
