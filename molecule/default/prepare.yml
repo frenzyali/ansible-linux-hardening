@@ -40,3 +40,8 @@
       ansible.posix.authorized_key:
         user: opsadmin
         key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAISTRAYxxxxPLACEHOLDERxxxxMUSTxxxxBExxxxREMOVED stray-placeholder"
+
+    - name: Prepare | Install kmod so verify can read the effective modprobe config
+      ansible.builtin.package:
+        name: kmod
+        state: present

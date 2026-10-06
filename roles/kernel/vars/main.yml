@@ -1,0 +1,11 @@
+---
+kernel_forwarding_settings:
+  net.ipv4.ip_forward: "{{ 1 if kernel_ip_forwarding | bool else 0 }}"
+  net.ipv6.conf.all.forwarding: "{{ 1 if kernel_ip_forwarding | bool else 0 }}"
+
+kernel_sysctl_effective: "{{ kernel_sysctl_settings | combine(kernel_forwarding_settings, kernel_sysctl_overrides) }}"
+
+kernel_module_blacklist: >-
+  {{ kernel_blacklist_filesystems + kernel_blacklist_network_protocols
+     + (['usb-storage'] if kernel_disable_usb_storage | bool else [])
+     + kernel_blacklist_extra }}

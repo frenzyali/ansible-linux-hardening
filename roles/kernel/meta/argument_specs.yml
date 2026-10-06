@@ -1,0 +1,49 @@
+---
+argument_specs:
+  main:
+    short_description: sysctl hardening, kernel module blacklist and core dump lockdown.
+    description:
+      - Writes sysctl settings to /etc/sysctl.d/60-hardening.conf and, on real hosts, sets the live values.
+      - Blocks loading of rarely used filesystems and network protocols (usb-storage optional).
+      - Disables core dumps through limits.d and systemd-coredump.
+    author: Syed Ali Hussain
+    options:
+      kernel_enabled:
+        type: bool
+        description: Run the role at all.
+      kernel_runtime_apply:
+        type: bool
+        description: Set live sysctl values. Disabled automatically when hardening_in_container is true.
+      kernel_sysctl_file:
+        type: path
+        description: sysctl drop-in file.
+      kernel_sysctl_settings:
+        type: dict
+        description: sysctl keys and values.
+      kernel_sysctl_overrides:
+        type: dict
+        description: Merged over kernel_sysctl_settings.
+      kernel_ip_forwarding:
+        type: bool
+        description: Allow IPv4/IPv6 forwarding (routers, container hosts).
+      kernel_module_blacklist_enabled:
+        type: bool
+        description: Manage the module blacklist.
+      kernel_blacklist_filesystems:
+        type: list
+        elements: str
+        description: Filesystem modules to block.
+      kernel_blacklist_network_protocols:
+        type: list
+        elements: str
+        description: Network protocol modules to block.
+      kernel_disable_usb_storage:
+        type: bool
+        description: Block the usb-storage module.
+      kernel_blacklist_extra:
+        type: list
+        elements: str
+        description: Extra modules to block.
+      kernel_disable_coredumps:
+        type: bool
+        description: Disable core dumps.

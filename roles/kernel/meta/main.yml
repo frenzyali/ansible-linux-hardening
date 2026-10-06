@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  role_name: kernel
+  namespace: frenzyali
+  author: Syed Ali Hussain
+  description: sysctl hardening through a drop-in file, blocked kernel modules and disabled core dumps.
+  license: MIT
+  min_ansible_version: "2.18"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - noble
+    - name: EL
+      versions:
+        - "9"
+  galaxy_tags:
+    - security
+    - hardening
+    - sysctl
+    - kernel
+
+dependencies: []

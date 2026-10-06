@@ -1,0 +1,80 @@
+---
+# Master switch for the whole role.
+kernel_enabled: true
+
+# Set the live kernel values as well as the config files. A container shares
+# the host kernel (and /proc/sys is read-only there), so hardening_in_container
+# turns this off and only the files are written.
+kernel_runtime_apply: "{{ not (hardening_in_container | default(false) | bool) }}"
+
+# --- sysctl -----------------------------------------------------------------
+kernel_sysctl_file: /etc/sysctl.d/60-hardening.conf
+kernel_sysctl_settings:
+  # Kernel pointers and logs: no address leaks to unprivileged users.
+  kernel.kptr_restrict: 2
+  kernel.dmesg_restrict: 1
+  kernel.perf_event_paranoid: 3
+  # Full address space layout randomisation.
+  kernel.randomize_va_space: 2
+  # ptrace only for parent processes (stops a compromised process reading
+  # another one's memory, e.g. ssh-agent).
+  kernel.yama.ptrace_scope: 1
+  kernel.sysrq: 0
+  kernel.unprivileged_bpf_disabled: 1
+  net.core.bpf_jit_harden: 2
+  # Filesystem protections against link/FIFO tricks in shared directories.
+  fs.protected_hardlinks: 1
+  fs.protected_symlinks: 1
+  fs.protected_fifos: 2
+  fs.protected_regular: 2
+  fs.suid_dumpable: 0
+  # IPv4: no redirects or source routing, reverse-path filtering, SYN cookies.
+  net.ipv4.conf.all.accept_redirects: 0
+  net.ipv4.conf.default.accept_redirects: 0
+  net.ipv4.conf.all.secure_redirects: 0
+  net.ipv4.conf.default.secure_redirects: 0
+  net.ipv4.conf.all.send_redirects: 0
+  net.ipv4.conf.default.send_redirects: 0
+  net.ipv4.conf.all.accept_source_route: 0
+  net.ipv4.conf.default.accept_source_route: 0
+  net.ipv4.conf.all.rp_filter: 1
+  net.ipv4.conf.default.rp_filter: 1
+  net.ipv4.conf.all.log_martians: 1
+  net.ipv4.conf.default.log_martians: 1
+  net.ipv4.icmp_echo_ignore_broadcasts: 1
+  net.ipv4.icmp_ignore_bogus_error_responses: 1
+  net.ipv4.tcp_syncookies: 1
+  # IPv6: no redirects or source routing.
+  net.ipv6.conf.all.accept_redirects: 0
+  net.ipv6.conf.default.accept_redirects: 0
+  net.ipv6.conf.all.accept_source_route: 0
+  net.ipv6.conf.default.accept_source_route: 0
+# Merged over the settings above (e.g. { net.ipv4.conf.all.rp_filter: 2 }).
+kernel_sysctl_overrides: {}
+# Routers, VPN gateways and container hosts (Docker, Kubernetes) need
+# forwarding; everything else should not forward packets.
+kernel_ip_forwarding: false
+
+# --- Kernel modules -----------------------------------------------------------
+kernel_module_blacklist_enabled: true
+# Rarely used filesystems with a history of parser bugs. squashfs (snaps) and
+# udf (some cloud images) are left alone on purpose.
+kernel_blacklist_filesystems:
+  - cramfs
+  - freevxfs
+  - jffs2
+  - hfs
+  - hfsplus
+# Rarely used network protocols with a history of remote bugs.
+kernel_blacklist_network_protocols:
+  - dccp
+  - sctp
+  - rds
+  - tipc
+# Blocks USB mass storage. Off by default: some servers boot or install from USB.
+kernel_disable_usb_storage: false
+kernel_blacklist_extra: []
+
+# --- Core dumps -------------------------------------------------------------
+# Core dumps can contain passwords and keys from process memory.
+kernel_disable_coredumps: true

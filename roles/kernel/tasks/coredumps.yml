@@ -1,0 +1,33 @@
+---
+- name: Kernel | Forbid core dumps for all users
+  ansible.builtin.copy:
+    content: |
+      # Managed by Ansible (kernel role). Local changes will be overwritten.
+      *    hard    core    0
+    dest: /etc/security/limits.d/60-hardening-coredump.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Kernel | Create systemd-coredump drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/coredump.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  register: kernel_coredump_dir
+
+- name: Kernel | Make systemd-coredump store nothing
+  ansible.builtin.copy:
+    content: |
+      # Managed by Ansible (kernel role). Local changes will be overwritten.
+      [Coredump]
+      Storage=none
+      ProcessSizeMax=0
+    dest: /etc/systemd/coredump.conf.d/60-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  # The directory above is only simulated in check mode.
+  when: not (ansible_check_mode and kernel_coredump_dir is changed)

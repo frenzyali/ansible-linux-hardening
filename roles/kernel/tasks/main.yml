@@ -1,0 +1,19 @@
+---
+- name: Kernel | Skip role when disabled
+  ansible.builtin.meta: end_role
+  when: not kernel_enabled | bool
+  tags: [always]
+
+- name: Kernel | sysctl hardening
+  ansible.builtin.import_tasks: sysctl.yml
+  tags: [kernel_sysctl]
+
+- name: Kernel | Module blacklist
+  ansible.builtin.import_tasks: modules.yml
+  when: kernel_module_blacklist_enabled | bool
+  tags: [kernel_modules]
+
+- name: Kernel | Core dumps
+  ansible.builtin.import_tasks: coredumps.yml
+  when: kernel_disable_coredumps | bool
+  tags: [kernel_coredumps]

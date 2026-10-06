@@ -1,0 +1,4 @@
+---
+# No handlers: sysctl values are set directly by the sysctl tasks, module
+# rules apply to the next load attempt, and core dump limits to new sessions.
+[]

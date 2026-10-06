@@ -1,0 +1,69 @@
+---
+# "systemd-analyze cat-config sysctl.d" prints every sysctl.d file in the order
+# systemd-sysctl applies them at boot. Building a dict from it keeps the LAST value of each key,
+# so this checks what the kernel would really get, including that no file
+# sorting after ours overrides it.
+- name: Kernel | Read the merged sysctl configuration
+  ansible.builtin.command: systemd-analyze cat-config sysctl.d
+  register: verify_sysctl_cat
+  changed_when: false
+
+- name: Kernel | Assert effective boot-time sysctl values
+  ansible.builtin.assert:
+    that:
+      - verify_sysctl[item.key] | default('unset') == item.value
+    fail_msg: "{{ item.key }}: expected {{ item.value }}, effective {{ verify_sysctl[item.key] | default('unset') }}"
+    quiet: true
+  loop:
+    - { key: kernel.kptr_restrict, value: "2" }
+    - { key: kernel.dmesg_restrict, value: "1" }
+    - { key: kernel.randomize_va_space, value: "2" }
+    - { key: kernel.yama.ptrace_scope, value: "1" }
+    - { key: kernel.unprivileged_bpf_disabled, value: "1" }
+    - { key: fs.protected_symlinks, value: "1" }
+    - { key: fs.suid_dumpable, value: "0" }
+    - { key: net.ipv4.ip_forward, value: "0" }
+    - { key: net.ipv4.conf.all.accept_redirects, value: "0" }
+    - { key: net.ipv4.conf.all.send_redirects, value: "0" }
+    - { key: net.ipv4.conf.all.rp_filter, value: "1" }
+    - { key: net.ipv4.tcp_syncookies, value: "1" }
+    - { key: net.ipv6.conf.all.accept_redirects, value: "0" }
+  loop_control:
+    label: "{{ item.key }}"
+  vars:
+    verify_sysctl: >-
+      {{ verify_sysctl_cat.stdout_lines
+         | reject('match', '^\s*([#;]|$)')
+         | select('search', '=')
+         | map('regex_replace', '^\s*-?\s*([^=\s]+)\s*=\s*(.*?)\s*$', '\1=\2')
+         | map('split', '=', 1)
+         | community.general.dict }}
+
+# modprobe --showconfig prints the merged modprobe configuration.
+- name: Kernel | Read the effective modprobe configuration
+  ansible.builtin.command: modprobe --showconfig
+  register: verify_modprobe
+  changed_when: false
+
+- name: Kernel | Assert unneeded modules cannot be loaded
+  ansible.builtin.assert:
+    that:
+      - verify_modprobe.stdout_lines | select('match', '^install ' ~ item ~ ' /bin/false$') | list | length == 1
+      - verify_modprobe.stdout_lines | select('match', '^blacklist ' ~ item ~ '$') | list | length >= 1
+    quiet: true
+  loop: [cramfs, freevxfs, jffs2, hfs, hfsplus, dccp, sctp, rds, tipc]
+
+- name: Kernel | Read core dump settings
+  ansible.builtin.slurp:
+    src: "{{ item }}"
+  loop:
+    - /etc/security/limits.d/60-hardening-coredump.conf
+    - /etc/systemd/coredump.conf.d/60-hardening.conf
+  register: verify_core
+
+- name: Kernel | Assert core dumps disabled
+  ansible.builtin.assert:
+    that:
+      - verify_core.results[0].content | b64decode is search('(?m)^\*\s+hard\s+core\s+0$')
+      - verify_core.results[1].content | b64decode is search('(?m)^Storage=none$')
+    quiet: true

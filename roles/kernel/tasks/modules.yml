@@ -1,0 +1,12 @@
+---
+# "install <module> /bin/false" makes every load attempt fail, including
+# automatic loading on mount or socket creation; "blacklist" alone does not.
+# Modules already loaded stay loaded until reboot: unloading them here could
+# break a running system.
+- name: Kernel | Block unneeded kernel modules
+  ansible.builtin.template:
+    src: blacklist.conf.j2
+    dest: /etc/modprobe.d/60-hardening-blacklist.conf
+    owner: root
+    group: root
+    mode: "0644"

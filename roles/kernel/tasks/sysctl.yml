@@ -1,0 +1,27 @@
+---
+# Minimal images (and some containers) ship without /etc/sysctl.d.
+- name: Kernel | Ensure the sysctl drop-in directory exists
+  ansible.builtin.file:
+    path: "{{ kernel_sysctl_file | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  register: kernel_sysctl_dir
+
+# Every key goes to one drop-in file. With kernel_runtime_apply the module
+# also compares the live value and sets it if it differs, so a manual
+# "sysctl -w" is corrected on the next run, not only at reboot.
+- name: Kernel | Write sysctl settings to the drop-in (and the live kernel)
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value | string }}"
+    sysctl_file: "{{ kernel_sysctl_file }}"
+    sysctl_set: "{{ kernel_runtime_apply | bool }}"
+    reload: false
+    state: present
+  loop: "{{ kernel_sysctl_effective | dict2items }}"
+  loop_control:
+    label: "{{ item.key }} = {{ item.value }}"
+  # The directory above is only simulated in check mode.
+  when: not (ansible_check_mode and kernel_sysctl_dir is changed)
