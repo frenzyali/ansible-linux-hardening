@@ -1,0 +1,34 @@
+---
+- name: Auditd | Skip role when disabled
+  ansible.builtin.meta: end_role
+  when: not auditd_enabled | bool
+  tags: [always]
+
+- name: Auditd | Load OS family variables
+  ansible.builtin.include_vars: "{{ lookup('ansible.builtin.first_found', auditd_vars_files) }}"
+  vars:
+    auditd_vars_files:
+      files:
+        - "{{ ansible_facts['os_family'] }}.yml"
+      paths:
+        - "{{ role_path }}/vars"
+  tags: [always]
+
+- name: Auditd | Install auditd
+  ansible.builtin.package:
+    name: "{{ auditd_os_packages }}"
+    state: present
+  register: auditd_packages_install
+  tags: [auditd_install]
+
+- name: Auditd | Daemon settings
+  ansible.builtin.import_tasks: config.yml
+  tags: [auditd_config]
+
+- name: Auditd | Audit rules
+  ansible.builtin.import_tasks: rules.yml
+  tags: [auditd_rules]
+
+- name: Auditd | Service
+  ansible.builtin.import_tasks: service.yml
+  tags: [auditd_service]

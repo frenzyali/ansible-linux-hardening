@@ -1,0 +1,69 @@
+---
+# The kernel audit subsystem is not available in a container, so the rules are
+# checked as files: the expected rules must be present, the syscall lines must
+# match the host architecture, and every setuid binary must be covered.
+- name: Auditd | Read the rules files
+  ansible.builtin.slurp:
+    src: "{{ item }}"
+  loop:
+    - /etc/audit/rules.d/50-hardening.rules
+    - /etc/audit/rules.d/99-finalize.rules
+  register: verify_audit_rules
+
+- name: Auditd | Assert the expected rules are present
+  ansible.builtin.assert:
+    that:
+      - verify_rules is search('(?m)^-w /etc/passwd -p wa -k identity$')
+      - verify_rules is search('(?m)^-w /etc/shadow -p wa -k identity$')
+      - verify_rules is search('(?m)^-w /etc/sudoers -p wa -k scope$')
+      - verify_rules is search('(?m)^-w /etc/sudoers.d -p wa -k scope$')
+      - verify_rules is search('(?m)^-w /var/log/lastlog -p wa -k logins$')
+      - verify_rules is search('(?m)^-w /var/log/(auth\.log|secure) -p wa -k auth_log$')
+      - verify_rules is search('(?m)^-a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time-change$')
+      - verify_rules is search('(?m)^-a always,exit -F arch=b64 -S init_module,finit_module,delete_module -k modules$')
+      - verify_rules is search('(?m)^-a always,exit -F path=/usr/bin/sudo -F perm=x -F auid>=1000 -F auid!=unset -k privileged$')
+      - verify_rules is search('(?m)^-a always,exit -F path=/usr/bin/passwd -F perm=x -F auid>=1000 -F auid!=unset -k privileged$')
+      - verify_finalize is search('(?m)^-e 2$')
+    quiet: true
+  vars:
+    verify_rules: "{{ verify_audit_rules.results[0].content | b64decode }}"
+    verify_finalize: "{{ verify_audit_rules.results[1].content | b64decode }}"
+
+- name: Auditd | List setuid binaries independently of the role
+  ansible.builtin.command: find /usr/bin /usr/sbin -xdev -type f -perm -4000
+  register: verify_suid
+  changed_when: false
+
+- name: Auditd | Assert every setuid binary has a privileged rule
+  ansible.builtin.assert:
+    that:
+      - ('-F path=' ~ item ~ ' -F perm=x') in (verify_audit_rules.results[0].content | b64decode)
+    fail_msg: "{{ item }} is setuid but has no audit rule"
+    quiet: true
+  loop: "{{ verify_suid.stdout_lines }}"
+
+- name: Auditd | Read auditd.conf
+  ansible.builtin.slurp:
+    src: /etc/audit/auditd.conf
+  register: verify_auditd_conf
+
+- name: Auditd | Assert log rotation and disk-full behaviour
+  ansible.builtin.assert:
+    that:
+      - verify_auditd_conf.content | b64decode is search('(?m)^max_log_file_action = rotate$')
+      - verify_auditd_conf.content | b64decode is search('(?m)^disk_full_action = suspend$')
+    quiet: true
+
+# Query the unit file state directly: in a container the package's own
+# post-install start attempt leaves the unit "failed" (no kernel audit
+# subsystem), which service_facts reports instead of "enabled".
+- name: Auditd | Look up the auditd unit
+  ansible.builtin.systemd_service:
+    name: auditd
+  register: verify_auditd_unit
+
+- name: Auditd | Assert auditd enabled at boot
+  ansible.builtin.assert:
+    that:
+      - verify_auditd_unit.status.UnitFileState == 'enabled'
+    quiet: true

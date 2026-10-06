@@ -24,3 +24,6 @@
 
     - name: Verify | kernel
       ansible.builtin.import_tasks: verify/kernel.yml
+
+    - name: Verify | auditd
+      ansible.builtin.import_tasks: verify/auditd.yml

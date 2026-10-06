@@ -1,0 +1,61 @@
+---
+argument_specs:
+  main:
+    short_description: auditd daemon settings and hardening audit rules.
+    description:
+      - Installs auditd and sets log rotation and disk-full behaviour in auditd.conf.
+      - Writes /etc/audit/rules.d/50-hardening.rules, including one rule per setuid/setgid binary found on the host.
+      - Optionally locks the rules until reboot (-e 2) in 99-finalize.rules.
+      - Loads the rules with augenrules on real hosts; reports when a reboot is needed instead.
+    author: Syed Ali Hussain
+    options:
+      auditd_enabled:
+        type: bool
+        description: Run the role at all.
+      auditd_runtime_apply:
+        type: bool
+        description: Start auditd and load rules. Disabled automatically when hardening_in_container is true.
+      auditd_immutable:
+        type: bool
+        description: Lock the rules until reboot with -e 2.
+      auditd_rules_identity:
+        type: bool
+        description: Watch account and group files.
+      auditd_rules_sudoers:
+        type: bool
+        description: Watch sudoers and the sudo log.
+      auditd_rules_auth_logs:
+        type: bool
+        description: Watch login records and auth logs.
+      auditd_rules_sshd_config:
+        type: bool
+        description: Watch the SSH server configuration.
+      auditd_rules_time_change:
+        type: bool
+        description: Audit clock changes.
+      auditd_rules_kernel_modules:
+        type: bool
+        description: Audit kernel module loading and unloading.
+      auditd_rules_privileged_commands:
+        type: bool
+        description: Audit execution of every setuid/setgid binary by real users.
+      auditd_rules_permission_changes:
+        type: bool
+        description: Audit chmod/chown/xattr changes by real users.
+      auditd_rules_mounts:
+        type: bool
+        description: Audit mounts by real users.
+      auditd_rules_extra:
+        type: list
+        elements: str
+        description: Raw audit rule lines appended to the rules file.
+      auditd_privileged_search_paths:
+        type: list
+        elements: path
+        description: Directories searched for setuid/setgid binaries.
+      auditd_conf:
+        type: dict
+        description: auditd.conf keys and values.
+      auditd_uid_min:
+        type: int
+        description: Lowest UID of a real (non-system) user.

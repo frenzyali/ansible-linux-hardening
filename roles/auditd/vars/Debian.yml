@@ -1,0 +1,4 @@
+---
+auditd_os_packages:
+  - auditd
+auditd_os_auth_log: /var/log/auth.log

@@ -1,0 +1,4 @@
+---
+auditd_os_packages:
+  - audit
+auditd_os_auth_log: /var/log/secure

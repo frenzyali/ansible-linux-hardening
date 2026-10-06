@@ -44,3 +44,6 @@
     - role: kernel
       become: true
       tags: [kernel]
+    - role: auditd
+      become: true
+      tags: [auditd]

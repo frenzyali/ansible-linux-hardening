@@ -1,0 +1,14 @@
+---
+- name: Auditd | Enable auditd at boot
+  ansible.builtin.systemd_service:
+    name: auditd
+    enabled: true
+  when: not auditd_check_mode_pending
+
+- name: Auditd | Start auditd
+  ansible.builtin.systemd_service:
+    name: auditd
+    state: started
+  when:
+    - auditd_runtime_apply | bool
+    - not auditd_check_mode_pending

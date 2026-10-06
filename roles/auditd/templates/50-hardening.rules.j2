@@ -1,0 +1,76 @@
+# {{ ansible_managed }}
+# Search events by key, e.g.: ausearch -k identity --start today
+{% macro syscall_rule(group, key, filter='') %}
+{% for arch in auditd_arches %}
+-a always,exit -F arch={{ arch }} -S {{ auditd_syscalls[group][arch] | join(',') }}{{ filter }} -k {{ key }}
+{% endfor %}
+{% endmacro %}
+{% set real_user = ' -F auid>=' ~ auditd_uid_min ~ ' -F auid!=unset' %}
+{% if auditd_rules_identity | bool %}
+
+## Identity: accounts, groups and password history
+-w /etc/passwd -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/gshadow -p wa -k identity
+-w /etc/security/opasswd -p wa -k identity
+{% endif %}
+{% if auditd_rules_sudoers | bool %}
+
+## Privilege scope: who may use sudo, and the sudo log
+-w /etc/sudoers -p wa -k scope
+-w /etc/sudoers.d -p wa -k scope
+-w /var/log/sudo.log -p wa -k sudo_log
+{% endif %}
+{% if auditd_rules_auth_logs | bool %}
+
+## Logins and authentication logs
+-w /var/log/lastlog -p wa -k logins
+-w /var/run/faillock -p wa -k logins
+-w {{ auditd_os_auth_log }} -p wa -k auth_log
+{% endif %}
+{% if auditd_rules_sshd_config | bool %}
+
+## SSH server configuration
+-w /etc/ssh/sshd_config -p wa -k sshd_config
+-w /etc/ssh/sshd_config.d -p wa -k sshd_config
+{% endif %}
+{% if auditd_rules_time_change | bool %}
+
+## Time changes
+{{ syscall_rule('time_change', 'time-change') | trim }}
+-w /etc/localtime -p wa -k time-change
+{% endif %}
+{% if auditd_rules_kernel_modules | bool %}
+
+## Kernel module loading and unloading
+{{ syscall_rule('modules', 'modules') | trim }}
+-w /usr/sbin/insmod -p x -k modules
+-w /usr/sbin/rmmod -p x -k modules
+-w /usr/sbin/modprobe -p x -k modules
+-w /usr/bin/kmod -p x -k modules
+{% endif %}
+{% if auditd_rules_permission_changes | bool %}
+
+## Permission and ownership changes by real users
+{{ syscall_rule('perm_mod', 'perm_mod', real_user) | trim }}
+{% endif %}
+{% if auditd_rules_mounts | bool %}
+
+## Mounts by real users
+{{ syscall_rule('mounts', 'mounts', real_user) | trim }}
+{% endif %}
+{% if auditd_rules_privileged_commands | bool %}
+
+## Privileged commands: every setuid/setgid binary found on this host, run by real users
+{% for path in auditd_privileged_commands %}
+-a always,exit -F path={{ path }} -F perm=x{{ real_user }} -k privileged
+{% endfor %}
+{% endif %}
+{% if auditd_rules_extra | length > 0 %}
+
+## Extra rules
+{% for line in auditd_rules_extra %}
+{{ line }}
+{% endfor %}
+{% endif %}

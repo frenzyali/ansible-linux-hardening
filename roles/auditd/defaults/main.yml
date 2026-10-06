@@ -1,0 +1,48 @@
+---
+# Master switch for the whole role.
+auditd_enabled: true
+
+# Start auditd and load the rules into the kernel. A container cannot use the
+# kernel audit subsystem, so hardening_in_container writes the files only.
+auditd_runtime_apply: "{{ not (hardening_in_container | default(false) | bool) }}"
+
+# Lock the loaded rules ("-e 2") until the next reboot, so an attacker with
+# root cannot quietly switch auditing off. Trade-off: rule changes made by
+# this role later only take effect after a reboot (the handler tells you).
+auditd_immutable: true
+
+# --- Rule groups ------------------------------------------------------------
+auditd_rules_identity: true          # passwd, group, shadow, gshadow, opasswd
+auditd_rules_sudoers: true           # sudoers and sudoers.d, sudo log
+auditd_rules_auth_logs: true         # login records and auth logs
+auditd_rules_sshd_config: true       # sshd_config and drop-ins
+auditd_rules_time_change: true       # clock-changing syscalls, /etc/localtime
+auditd_rules_kernel_modules: true    # module load/unload syscalls and tools
+auditd_rules_privileged_commands: true  # every setuid/setgid binary, by real users
+auditd_rules_permission_changes: true   # chmod/chown/xattr by real users
+auditd_rules_mounts: true            # mount by real users
+# Raw lines appended to the rules file.
+auditd_rules_extra: []
+
+# Directories searched for setuid/setgid binaries.
+auditd_privileged_search_paths:
+  - /usr/bin
+  - /usr/sbin
+  - /usr/libexec
+  - /usr/lib
+
+# --- auditd.conf ----------------------------------------------------------
+# Availability over completeness: when the disk fills, auditd suspends
+# logging and reports to syslog instead of halting the machine (the CIS
+# benchmark prefers halting; see the README for the trade-off).
+auditd_conf:
+  max_log_file: 32
+  num_logs: 8
+  max_log_file_action: rotate
+  space_left_action: syslog
+  admin_space_left_action: suspend
+  disk_full_action: suspend
+  disk_error_action: syslog
+
+# Events by accounts at or above this UID count as "real users".
+auditd_uid_min: 1000

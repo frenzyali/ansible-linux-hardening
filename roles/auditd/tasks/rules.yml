@@ -1,0 +1,53 @@
+---
+# Read-only search, so it also runs in check mode. The list is sorted so the
+# rules file only changes when the set of binaries changes.
+- name: Auditd | Find setuid and setgid binaries
+  ansible.builtin.find:
+    paths: "{{ auditd_privileged_search_paths }}"
+    file_type: file
+    recurse: true
+    mode: "{{ item }}"
+    exact_mode: false
+  loop:
+    - "4000"
+    - "2000"
+  register: auditd_privileged_found
+  when: auditd_rules_privileged_commands | bool
+
+- name: Auditd | Write hardening rules
+  ansible.builtin.template:
+    src: 50-hardening.rules.j2
+    dest: /etc/audit/rules.d/50-hardening.rules
+    owner: root
+    group: root
+    mode: "0600"
+  vars:
+    auditd_privileged_commands: >-
+      {{ (auditd_privileged_found.results | default([]) | map(attribute='files', default=[])
+          | flatten | map(attribute='path') | unique | sort)
+         if auditd_rules_privileged_commands | bool else [] }}
+  notify: Load audit rules
+  when: not auditd_check_mode_pending
+
+# Loaded last (99-), so "-e 2" locks everything that came before it.
+- name: Auditd | Make the rules immutable until reboot
+  ansible.builtin.copy:
+    content: |
+      # Managed by Ansible (auditd role). Local changes will be overwritten.
+      # Lock the audit configuration until the next reboot.
+      -e 2
+    dest: /etc/audit/rules.d/99-finalize.rules
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Load audit rules
+  when:
+    - auditd_immutable | bool
+    - not auditd_check_mode_pending
+
+- name: Auditd | Remove the immutable flag when disabled
+  ansible.builtin.file:
+    path: /etc/audit/rules.d/99-finalize.rules
+    state: absent
+  notify: Load audit rules
+  when: not auditd_immutable | bool

@@ -1,0 +1,11 @@
+---
+- name: Auditd | Set log rotation and disk-full behaviour
+  ansible.builtin.lineinfile:
+    path: /etc/audit/auditd.conf
+    regexp: '^\s*{{ item.key }}\s*='
+    line: "{{ item.key }} = {{ item.value }}"
+  loop: "{{ auditd_conf | dict2items }}"
+  loop_control:
+    label: "{{ item.key }} = {{ item.value }}"
+  notify: Reload auditd configuration
+  when: not auditd_check_mode_pending

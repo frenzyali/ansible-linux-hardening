@@ -1,0 +1,33 @@
+---
+# "Load audit rules": the three handlers below run in this order.
+- name: Check whether the audit rules are locked
+  ansible.builtin.command: auditctl -s
+  register: auditd_status
+  changed_when: false
+  when: auditd_runtime_apply | bool
+  listen: Load audit rules
+
+- name: Load audit rules into the kernel
+  ansible.builtin.command: augenrules --load
+  changed_when: true
+  when:
+    - auditd_runtime_apply | bool
+    - auditd_status.stdout is not search('(?m)^enabled 2$')
+  listen: Load audit rules
+
+- name: Report that the new audit rules need a reboot
+  ansible.builtin.debug:
+    msg: >-
+      The audit rules are immutable (-e 2) until reboot. The updated rules are
+      in /etc/audit/rules.d and will be loaded at the next boot.
+  when:
+    - auditd_runtime_apply | bool
+    - auditd_status.stdout is search('(?m)^enabled 2$')
+  listen: Load audit rules
+
+# auditd re-reads auditd.conf on SIGHUP. On RHEL-family systems the unit
+# refuses manual restarts, so the signal is the portable way.
+- name: Reload auditd configuration
+  ansible.builtin.command: auditctl --signal reload
+  changed_when: true
+  when: auditd_runtime_apply | bool

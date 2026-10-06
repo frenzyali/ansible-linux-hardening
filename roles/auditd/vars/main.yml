@@ -1,0 +1,27 @@
+---
+# True only in check mode when auditd is not installed yet.
+auditd_check_mode_pending: "{{ ansible_check_mode and (auditd_packages_install | default({})) is changed }}"
+
+# Syscall rules need one line per ABI. x86_64 also runs 32-bit binaries, so
+# both ABIs are audited there; other architectures get b64 only.
+auditd_arches: "{{ ['b64', 'b32'] if ansible_facts['architecture'] == 'x86_64' else ['b64'] }}"
+
+# Syscall names per ABI. chmod/chown/lchown/stime only exist on x86 ABIs;
+# aarch64 (b64 only) has just the *at() and f*() variants.
+auditd_x86: "{{ ansible_facts['architecture'] == 'x86_64' }}"
+auditd_syscalls:
+  time_change:
+    b64: [adjtimex, settimeofday, clock_settime]
+    b32: [adjtimex, settimeofday, clock_settime, stime]
+  modules:
+    b64: [init_module, finit_module, delete_module]
+    b32: [init_module, finit_module, delete_module]
+  perm_mod:
+    b64: >-
+      {{ (['chmod', 'chown', 'lchown'] if auditd_x86 else [])
+         + ['fchmod', 'fchmodat', 'fchown', 'fchownat', 'setxattr', 'lsetxattr',
+            'fsetxattr', 'removexattr', 'lremovexattr', 'fremovexattr'] }}
+    b32: [chmod, fchmod, fchmodat, chown, fchown, fchownat, lchown, setxattr, lsetxattr, fsetxattr, removexattr, lremovexattr, fremovexattr]
+  mounts:
+    b64: [mount]
+    b32: [mount]
