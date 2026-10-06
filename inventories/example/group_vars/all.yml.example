@@ -1,0 +1,59 @@
+---
+# Example settings for the "hardened" group. Copy to all.yml (gitignored) in
+# your own inventory directory and edit. Every value below is a placeholder.
+#
+# Defaults for everything else are in roles/<role>/defaults/main.yml, and each
+# role validates its inputs (roles/<role>/meta/argument_specs.yml).
+
+# Real servers: apply sysctl, load audit rules, enable the firewall.
+hardening_in_container: false
+
+# --- users ------------------------------------------------------------------
+# At least one admin with a key is REQUIRED before the ssh role will turn
+# password logins off (lockout guard).
+users_admins:
+  - name: opsadmin
+    comment: Operations admin
+    authorized_keys:
+      # Placeholder: replace with the contents of your own ~/.ssh/id_ed25519.pub
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIREPLACExxxxWITHxxxxYOURxxxxOWNxxxxPUBLICxxxxKEY admin@example.com"
+users_sudo_nopasswd: true
+
+# --- ssh --------------------------------------------------------------------
+ssh_port: 22
+ssh_password_authentication: false
+# ssh_allow_users defaults to the names in users_admins.
+# ssh_allow_groups: [admins]
+ssh_allow_tcp_forwarding: false
+
+# --- firewall ---------------------------------------------------------------
+# SSH (ssh_port) is always allowed. Everything else inbound is denied unless listed.
+firewall_allowed_ports:
+  - port: 443
+    proto: tcp
+    comment: HTTPS
+
+# --- fail2ban ---------------------------------------------------------------
+fail2ban_bantime: 1h
+fail2ban_findtime: 10m
+fail2ban_maxretry: 5
+fail2ban_ignoreip:
+  - 127.0.0.1/8
+  - "::1"
+  - 198.51.100.0/24   # placeholder (RFC 5737): your office or bastion range
+
+# --- base -------------------------------------------------------------------
+# base_chrony_sources:
+#   - server ntp.example.com iburst
+
+# --- kernel -----------------------------------------------------------------
+# Container hosts and routers need forwarding:
+# kernel_ip_forwarding: true
+# kernel_disable_usb_storage: true
+
+# --- auditd -----------------------------------------------------------------
+auditd_immutable: true
+
+# --- updates ----------------------------------------------------------------
+updates_security_only: true
+updates_automatic_reboot: false
