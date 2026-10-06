@@ -1,0 +1,10 @@
+# Local tooling
+.venv/
+.ansible/
+__pycache__/
+*.pyc
+*.retry
+
+# Your real settings: copy the example and keep it out of git
+inventories/*/group_vars/all.yml
+inventories/production/

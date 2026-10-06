@@ -1,0 +1,14 @@
+---
+# Strictest built-in profile. No rules are skipped globally; the few per-line
+# "noqa" comments in the code each carry a reason.
+profile: production
+strict: true
+
+exclude_paths:
+  - .venv/
+  - .ansible/
+  - .github/
+
+# Fail on unknown Jinja filters/tests and missing modules, using the pinned
+# collections from requirements.yml.
+offline: false

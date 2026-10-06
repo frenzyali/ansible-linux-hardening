@@ -1,0 +1,9 @@
+---
+# Collections used by the roles and by Molecule (versions looked up on Galaxy 2026-10-06).
+collections:
+  - name: ansible.posix
+    version: "2.2.2"
+  - name: community.general
+    version: "13.5.0"
+  - name: community.docker
+    version: "5.4.0"
