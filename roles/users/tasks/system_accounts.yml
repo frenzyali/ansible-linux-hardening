@@ -1,0 +1,34 @@
+---
+- name: Users | Read local accounts
+  ansible.builtin.getent:
+    database: "{{ item }}"
+  loop:
+    - passwd
+    - shadow
+
+# getent_passwd: name -> [password, uid, gid, gecos, home, shell]
+# getent_shadow: name -> [hash, lastchange, ...]
+# UIDs are strings in getent output; the "version" test compares them
+# numerically ("999" < "1000"), which a plain string comparison would not.
+- name: Users | Find system accounts below UID_MIN
+  ansible.builtin.set_fact:
+    users_system_accounts: >-
+      {{ ansible_facts['getent_passwd'] | dict2items
+         | rejectattr('key', 'in', users_system_accounts_exempt)
+         | rejectattr('value.1', 'equalto', '0')
+         | selectattr('value.1', 'version', users_uid_min | string, '<')
+         | map(attribute='key') | sort }}
+
+- name: Users | Give system accounts a non-login shell
+  ansible.builtin.user:
+    name: "{{ item }}"
+    shell: "{{ users_os_nologin_shell }}"
+  loop: "{{ users_system_accounts }}"
+  when: ansible_facts['getent_passwd'][item][5] not in users_non_login_shells
+
+- name: Users | Lock system account passwords
+  ansible.builtin.user:
+    name: "{{ item }}"
+    password_lock: true
+  loop: "{{ users_system_accounts }}"
+  when: not ansible_facts['getent_shadow'][item][0] is match('!')

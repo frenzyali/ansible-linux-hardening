@@ -29,3 +29,6 @@
     - role: base
       become: true
       tags: [base]
+    - role: users
+      become: true
+      tags: [users]

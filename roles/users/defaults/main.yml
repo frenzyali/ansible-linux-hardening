@@ -1,0 +1,54 @@
+---
+# Master switch for the whole role.
+users_enabled: true
+
+# --- Admin accounts ---------------------------------------------------------
+# Each entry:
+#   name:            login name (required)
+#   authorized_keys: list of public keys (strongly recommended; the ssh role
+#                    refuses to disable password logins unless one admin has a key)
+#   comment:         GECOS field
+#   shell:           login shell (default /bin/bash)
+#   groups:          extra supplementary groups
+#   password_hash:   crypt(3) hash, only needed if users_sudo_nopasswd is false
+users_admins: []
+
+# Members of this group get sudo through /etc/sudoers.d/60-hardening-admins.
+users_admin_group: admins
+# true: admins sudo without a password (they usually have only an SSH key).
+# false: every admin must have a password_hash, or nobody could use sudo.
+users_sudo_nopasswd: true
+# Remove keys in authorized_keys that are not listed in users_admins.
+users_authorized_keys_exclusive: true
+
+# --- Password policy --------------------------------------------------------
+users_pwquality_enabled: true
+# Written to /etc/security/pwquality.conf.d/60-hardening.conf
+users_pwquality_settings:
+  minlen: 14
+  minclass: 4
+  maxrepeat: 3
+  maxsequence: 3
+  dictcheck: 1
+  enforce_for_root: true
+# Fail if pam_pwquality is not in the PAM password stack (the settings above
+# would otherwise silently do nothing).
+users_pwquality_require_pam: true
+
+users_login_defs_enabled: true
+# Password aging and default umask for new accounts (/etc/login.defs).
+users_login_defs:
+  PASS_MAX_DAYS: 365
+  PASS_MIN_DAYS: 1
+  PASS_WARN_AGE: 7
+  UMASK: "027"
+
+# --- System accounts --------------------------------------------------------
+# Give accounts below UID_MIN (1000) a non-login shell and lock their passwords.
+users_lock_system_accounts: true
+users_system_accounts_exempt:
+  - root
+  - sync
+  - shutdown
+  - halt
+users_uid_min: 1000

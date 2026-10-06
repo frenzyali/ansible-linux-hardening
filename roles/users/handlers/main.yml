@@ -1,0 +1,4 @@
+---
+# No handlers: every change in this role takes effect immediately
+# (accounts, keys, sudoers, PAM configuration files).
+[]

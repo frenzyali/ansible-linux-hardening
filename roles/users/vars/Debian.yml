@@ -1,0 +1,7 @@
+---
+users_os_packages:
+  - sudo
+  - libpam-pwquality
+users_os_pam_password_file: /etc/pam.d/common-password
+users_os_nologin_shell: /usr/sbin/nologin
+users_os_sudo_group: sudo

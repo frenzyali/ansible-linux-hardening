@@ -1,0 +1,54 @@
+---
+- name: Users | Install sudo and PAM password quality module
+  ansible.builtin.package:
+    name: "{{ users_os_packages }}"
+    state: present
+  register: users_packages_install
+
+- name: Users | Create admin group
+  ansible.builtin.group:
+    name: "{{ users_admin_group }}"
+    state: present
+  register: users_admin_group_create
+
+- name: Users | Create admin accounts
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    comment: "{{ item.comment | default(omit) }}"
+    shell: "{{ item.shell | default('/bin/bash') }}"
+    groups: "{{ [users_admin_group] + item.groups | default([]) }}"
+    append: true
+    create_home: true
+    password: "{{ item.password_hash | default(omit) }}"
+    update_password: always
+    state: present
+  loop: "{{ users_admins }}"
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: "{{ item.password_hash is defined }}"
+  register: users_admin_accounts
+  when: not users_check_mode_pending
+
+- name: Users | Install authorized SSH keys
+  ansible.posix.authorized_key:
+    user: "{{ item.name }}"
+    key: "{{ item.authorized_keys | join('\n') }}"
+    exclusive: "{{ users_authorized_keys_exclusive }}"
+    manage_dir: true
+    state: present
+  # A new account only exists in simulation during check mode.
+  when:
+    - not users_check_mode_pending
+    - not (ansible_check_mode and users_admin_accounts is changed)
+  loop: "{{ users_admins | selectattr('authorized_keys', 'defined') | selectattr('authorized_keys') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Users | Grant sudo to the admin group
+  ansible.builtin.template:
+    src: sudoers-admins.j2
+    dest: /etc/sudoers.d/60-hardening-admins
+    owner: root
+    group: root
+    mode: "0440"
+    validate: visudo -cf %s

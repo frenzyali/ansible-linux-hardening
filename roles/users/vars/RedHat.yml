@@ -1,0 +1,7 @@
+---
+users_os_packages:
+  - sudo
+  - libpwquality
+users_os_pam_password_file: /etc/pam.d/system-auth
+users_os_nologin_shell: /usr/sbin/nologin
+users_os_sudo_group: wheel

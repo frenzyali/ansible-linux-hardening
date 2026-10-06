@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+# Validated with "visudo -cf" before it is installed.
+
+# Run commands in a pseudo-terminal, so a backgrounded process cannot keep
+# access to the terminal after sudo exits.
+Defaults use_pty
+# Keep a dedicated sudo log in addition to the journal.
+Defaults logfile="/var/log/sudo.log"
+
+%{{ users_admin_group }} ALL=(ALL:ALL) {{ 'NOPASSWD: ' if users_sudo_nopasswd | bool else '' }}ALL

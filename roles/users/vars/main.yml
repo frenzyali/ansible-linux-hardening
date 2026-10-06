@@ -1,0 +1,12 @@
+---
+# True only in check mode when packages or the admin group do not exist yet:
+# steps that need them cannot be simulated, so they are skipped.
+users_check_mode_pending: >-
+  {{ ansible_check_mode and ((users_packages_install | default({})) is changed
+                             or (users_admin_group_create | default({})) is changed) }}
+
+users_non_login_shells:
+  - /usr/sbin/nologin
+  - /sbin/nologin
+  - /bin/false
+  - /usr/bin/false

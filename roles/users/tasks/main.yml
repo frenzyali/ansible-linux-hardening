@@ -1,0 +1,32 @@
+---
+- name: Users | Skip role when disabled
+  ansible.builtin.meta: end_role
+  when: not users_enabled | bool
+  tags: [always]
+
+- name: Users | Load OS family variables
+  ansible.builtin.include_vars: "{{ lookup('ansible.builtin.first_found', users_vars_files) }}"
+  vars:
+    users_vars_files:
+      files:
+        - "{{ ansible_facts['os_family'] }}.yml"
+      paths:
+        - "{{ role_path }}/vars"
+  tags: [always]
+
+- name: Users | Preflight checks
+  ansible.builtin.import_tasks: preflight.yml
+  tags: [always]
+
+- name: Users | Admin accounts, keys and sudo
+  ansible.builtin.import_tasks: admins.yml
+  tags: [users_admins]
+
+- name: Users | Password policy
+  ansible.builtin.import_tasks: password_policy.yml
+  tags: [users_password_policy]
+
+- name: Users | Lock system accounts
+  ansible.builtin.import_tasks: system_accounts.yml
+  when: users_lock_system_accounts | bool
+  tags: [users_system_accounts]

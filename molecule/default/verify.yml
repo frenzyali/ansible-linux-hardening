@@ -9,3 +9,6 @@
   tasks:
     - name: Verify | base
       ansible.builtin.import_tasks: verify/base.yml
+
+    - name: Verify | users
+      ansible.builtin.import_tasks: verify/users.yml

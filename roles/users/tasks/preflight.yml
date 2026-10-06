@@ -1,0 +1,25 @@
+---
+- name: Users | Validate admin entries
+  ansible.builtin.assert:
+    that:
+      - item.name is match('^[a-z_][a-z0-9_-]{0,31}$')
+      - item.name not in ['root'] + users_system_accounts_exempt
+    fail_msg: "users_admins: '{{ item.name }}' is not a valid, non-system login name."
+    quiet: true
+  loop: "{{ users_admins }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+# With password-protected sudo, an admin without a password could log in with
+# a key but never become root: a privilege lockout. Refuse that up front.
+- name: Users | Refuse password sudo for admins without a password
+  ansible.builtin.assert:
+    that:
+      - users_sudo_nopasswd | bool or (item.password_hash | default('') | length > 0)
+    fail_msg: >-
+      users_sudo_nopasswd is false but admin '{{ item.name }}' has no password_hash,
+      so they could not use sudo. Set a password_hash or keep users_sudo_nopasswd true.
+    quiet: true
+  loop: "{{ users_admins }}"
+  loop_control:
+    label: "{{ item.name }}"

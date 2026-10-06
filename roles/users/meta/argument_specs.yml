@@ -1,0 +1,74 @@
+---
+argument_specs:
+  main:
+    short_description: Admin accounts, sudo, password policy and system account lockdown.
+    description:
+      - Creates admin accounts in a dedicated group with sudo rights and installs their SSH keys.
+      - Refuses password-protected sudo for admins that have no password (privilege lockout).
+      - Configures pam_pwquality and password aging, and checks that PAM actually enforces it.
+      - Gives system accounts a non-login shell and locks their passwords.
+    author: Syed Ali Hussain
+    options:
+      users_enabled:
+        type: bool
+        description: Run the role at all.
+      users_admins:
+        type: list
+        elements: dict
+        description: Admin accounts to create.
+        options:
+          name:
+            type: str
+            required: true
+            description: Login name.
+          authorized_keys:
+            type: list
+            elements: str
+            description: Public SSH keys for this admin.
+          comment:
+            type: str
+            description: GECOS field.
+          shell:
+            type: str
+            description: Login shell.
+          groups:
+            type: list
+            elements: str
+            description: Extra supplementary groups.
+          password_hash:
+            type: str
+            description: crypt(3) password hash. Required for every admin when users_sudo_nopasswd is false.
+      users_admin_group:
+        type: str
+        description: Group that receives sudo rights.
+      users_sudo_nopasswd:
+        type: bool
+        description: Allow admins to sudo without a password.
+      users_authorized_keys_exclusive:
+        type: bool
+        description: Remove keys that are not listed in users_admins.
+      users_pwquality_enabled:
+        type: bool
+        description: Manage the pwquality drop-in.
+      users_pwquality_settings:
+        type: dict
+        description: pwquality.conf settings. true writes a bare flag, false omits the key.
+      users_pwquality_require_pam:
+        type: bool
+        description: Fail if pam_pwquality is not in the PAM password stack.
+      users_login_defs_enabled:
+        type: bool
+        description: Manage password aging and UMASK in /etc/login.defs.
+      users_login_defs:
+        type: dict
+        description: login.defs keys and values.
+      users_lock_system_accounts:
+        type: bool
+        description: Give system accounts a non-login shell and lock their passwords.
+      users_system_accounts_exempt:
+        type: list
+        elements: str
+        description: System accounts that are never changed.
+      users_uid_min:
+        type: int
+        description: Accounts with a UID below this (and above 0) are system accounts.

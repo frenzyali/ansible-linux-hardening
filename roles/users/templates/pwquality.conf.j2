@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+{% for key, value in users_pwquality_settings | dictsort %}
+{% if value is sameas true %}
+{{ key }}
+{% elif value is sameas false %}
+{% else %}
+{{ key }} = {{ value }}
+{% endif %}
+{% endfor %}

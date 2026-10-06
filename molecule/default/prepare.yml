@@ -17,3 +17,26 @@
           - telnet
           - rpcbind
         state: present
+
+    - name: Prepare | Install pwscore to test the password policy behaviour
+      ansible.builtin.package:
+        name: "{{ 'libpwquality-tools' if ansible_facts['os_family'] == 'Debian' else 'libpwquality' }}"
+        state: present
+
+    - name: Prepare | Create a legacy system account with a login shell
+      ansible.builtin.user:
+        name: legacysvc
+        uid: 990
+        system: true
+        shell: /bin/bash
+        create_home: false
+
+    - name: Prepare | Pre-create the admin with a stray key the role must remove
+      ansible.builtin.user:
+        name: opsadmin
+        shell: /bin/bash
+
+    - name: Prepare | Add the stray key
+      ansible.posix.authorized_key:
+        user: opsadmin
+        key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAISTRAYxxxxPLACEHOLDERxxxxMUSTxxxxBExxxxREMOVED stray-placeholder"

@@ -1,0 +1,84 @@
+---
+- name: Users | Read accounts
+  ansible.builtin.getent:
+    database: "{{ item }}"
+  loop:
+    - passwd
+    - shadow
+    - group
+
+- name: Users | Assert admin account and group membership
+  ansible.builtin.assert:
+    that:
+      - "'opsadmin' in ansible_facts.getent_passwd"
+      - ansible_facts.getent_passwd['opsadmin'][5] == '/bin/bash'
+      - "'opsadmin' in ansible_facts.getent_group['admins'][2].split(',')"
+    quiet: true
+
+- name: Users | Read admin authorized_keys
+  ansible.builtin.slurp:
+    src: /home/opsadmin/.ssh/authorized_keys
+  register: verify_keys
+
+- name: Users | Assert the configured key is present and the stray key is gone
+  ansible.builtin.assert:
+    that:
+      - verify_keys.content | b64decode is search('molecule-placeholder')
+      - verify_keys.content | b64decode is not search('stray-placeholder')
+    quiet: true
+
+- name: Users | List the admin's sudo rights
+  ansible.builtin.command: sudo -l -U opsadmin
+  register: verify_sudo
+  changed_when: false
+
+- name: Users | Check the whole sudoers configuration parses
+  ansible.builtin.command: visudo -c
+  changed_when: false
+
+- name: Users | Assert admin has sudo and sudo runs with a pty
+  ansible.builtin.assert:
+    that:
+      - "'(ALL : ALL) NOPASSWD: ALL' in verify_sudo.stdout"
+      - verify_sudo.stdout is search('use_pty')
+    quiet: true
+
+- name: Users | Score a short password (must be rejected)
+  ansible.builtin.command: pwscore
+  args:
+    stdin: "Aa1!short"
+  register: verify_pw_short
+  changed_when: false
+  failed_when: verify_pw_short.rc == 0
+
+- name: Users | Score a long four-class password (must be accepted)
+  ansible.builtin.command: pwscore
+  args:
+    stdin: "Xk9#mQ2$vL7&pR4!wT"
+  register: verify_pw_long
+  changed_when: false
+
+- name: Users | Read PAM password stack and login.defs
+  ansible.builtin.slurp:
+    src: "{{ item }}"
+  loop:
+    - "{{ '/etc/pam.d/common-password' if ansible_facts['os_family'] == 'Debian' else '/etc/pam.d/system-auth' }}"
+    - /etc/login.defs
+  register: verify_pam
+
+- name: Users | Assert PAM enforces pwquality and aging is set
+  ansible.builtin.assert:
+    that:
+      - verify_pam.results[0].content | b64decode is search('(?m)^password\s+\S+\s+pam_pwquality\.so')
+      - verify_pam.results[1].content | b64decode is search('(?m)^PASS_MAX_DAYS\s+365$')
+      - verify_pam.results[1].content | b64decode is search('(?m)^PASS_MIN_DAYS\s+1$')
+      - verify_pam.results[1].content | b64decode is search('(?m)^UMASK\s+027$')
+    quiet: true
+
+- name: Users | Assert system accounts locked and root untouched
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.getent_passwd['legacysvc'][5] == '/usr/sbin/nologin'
+      - ansible_facts.getent_shadow['legacysvc'][0] is match('!')
+      - ansible_facts.getent_passwd['root'][5] == '/bin/bash'
+    quiet: true
