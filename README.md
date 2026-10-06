@@ -91,7 +91,7 @@ make test-rocky      # Molecule default scenario on Rocky Linux 9
 make test-lockout    # negative test: the lockout guard must refuse unsafe runs
 ```
 
-`make test` runs every scenario on every platform. Each Molecule run takes about 10 to 15 minutes, mostly package downloads.
+`make test` runs every scenario on every platform. A default-scenario run takes about 8 to 10 minutes per distribution (mostly package downloads) and the lockout scenario about 3.
 
 ### Using it on real servers
 
