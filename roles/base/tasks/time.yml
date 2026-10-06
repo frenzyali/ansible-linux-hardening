@@ -1,4 +1,6 @@
 ---
+# In check mode on a fresh host chrony is not installed yet, so its config
+# directory and unit do not exist; those steps are skipped instead of failing.
 - name: Base | Configure chrony
   ansible.builtin.template:
     src: chrony.conf.j2
@@ -8,11 +10,13 @@
     mode: "0644"
     validate: chronyd -p -f %s
   notify: Restart chrony
+  when: not base_check_mode_pending
 
 - name: Base | Enable chrony at boot
   ansible.builtin.systemd_service:
     name: "{{ base_os_chrony_service }}"
     enabled: true
+  when: not base_check_mode_pending
 
 # chronyd needs CAP_SYS_TIME, which a container does not have (systemd skips
 # the unit there). On real hosts it is started here.
@@ -20,4 +24,6 @@
   ansible.builtin.systemd_service:
     name: "{{ base_os_chrony_service }}"
     state: started
-  when: base_runtime_apply | bool
+  when:
+    - base_runtime_apply | bool
+    - not base_check_mode_pending

@@ -9,6 +9,7 @@
   ansible.builtin.package:
     name: "{{ base_os_packages + base_packages_extra }}"
     state: present
+  register: base_packages_install
 
 - name: Base | Remove legacy clear-text clients and services
   ansible.builtin.package:

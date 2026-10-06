@@ -6,6 +6,7 @@
     owner: root
     group: root
     mode: "0755"
+  register: base_journald_dir
 
 - name: Base | Make the journal persistent and bounded
   ansible.builtin.template:
@@ -15,6 +16,8 @@
     group: root
     mode: "0644"
   notify: Restart journald
+  # The directory above is only simulated in check mode.
+  when: not (ansible_check_mode and base_journald_dir is changed)
 
 # Storage=persistent only writes to disk if this directory exists.
 - name: Base | Create persistent journal directory

@@ -1,0 +1,4 @@
+---
+# True only in check mode when the baseline packages are not installed yet:
+# steps that need them cannot be simulated, so they are skipped.
+base_check_mode_pending: "{{ ansible_check_mode and (base_packages_install | default({})) is changed }}"
