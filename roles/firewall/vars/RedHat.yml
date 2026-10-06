@@ -1,0 +1,4 @@
+---
+firewall_os_backend: firewalld
+firewall_os_packages:
+  - firewalld

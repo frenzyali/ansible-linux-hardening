@@ -12,3 +12,6 @@
 
     - name: Verify | users
       ansible.builtin.import_tasks: verify/users.yml
+
+    - name: Verify | firewall
+      ansible.builtin.import_tasks: verify/firewall.yml

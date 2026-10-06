@@ -1,0 +1,32 @@
+---
+- name: Firewall | Skip role when disabled
+  ansible.builtin.meta: end_role
+  when: not firewall_enabled | bool
+  tags: [always]
+
+- name: Firewall | Load OS family variables
+  ansible.builtin.include_vars: "{{ lookup('ansible.builtin.first_found', firewall_vars_files) }}"
+  vars:
+    firewall_vars_files:
+      files:
+        - "{{ ansible_facts['os_family'] }}.yml"
+      paths:
+        - "{{ role_path }}/vars"
+  tags: [always]
+
+- name: Firewall | Install firewall package
+  ansible.builtin.package:
+    name: "{{ firewall_os_packages }}"
+    state: present
+  register: firewall_packages_install
+  tags: [firewall_install]
+
+- name: Firewall | Configure ufw
+  ansible.builtin.import_tasks: ufw.yml
+  when: firewall_os_backend == 'ufw'
+  tags: [firewall_rules]
+
+- name: Firewall | Configure firewalld
+  ansible.builtin.import_tasks: firewalld.yml
+  when: firewall_os_backend == 'firewalld'
+  tags: [firewall_rules]

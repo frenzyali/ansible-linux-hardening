@@ -1,0 +1,12 @@
+---
+- name: Reload ufw
+  community.general.ufw:
+    state: reloaded
+  when: firewall_runtime_apply | bool
+
+# A permanent zone target change only takes effect after a reload.
+- name: Reload firewalld
+  ansible.builtin.systemd_service:
+    name: firewalld
+    state: reloaded
+  when: firewall_runtime_apply | bool

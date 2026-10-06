@@ -1,0 +1,56 @@
+---
+- name: Firewall | ufw checks (Ubuntu)
+  when: ansible_facts['os_family'] == 'Debian'
+  block:
+    - name: Firewall | Read ufw defaults
+      ansible.builtin.slurp:
+        src: /etc/default/ufw
+      register: verify_ufw_defaults
+
+    # "ufw show added" reads the saved rules and works while ufw is inactive.
+    - name: Firewall | List saved ufw rules
+      ansible.builtin.command: ufw show added
+      register: verify_ufw_rules
+      changed_when: false
+
+    - name: Firewall | Assert default deny inbound, SSH limited, HTTPS allowed
+      ansible.builtin.assert:
+        that:
+          - verify_ufw_defaults.content | b64decode is search('(?m)^DEFAULT_INPUT_POLICY="DROP"$')
+          - verify_ufw_defaults.content | b64decode is search('(?m)^DEFAULT_FORWARD_POLICY="DROP"$')
+          - verify_ufw_rules.stdout is search('ufw limit 22/tcp')
+          - verify_ufw_rules.stdout is search('ufw allow 443/tcp')
+        quiet: true
+
+- name: Firewall | firewalld checks (Rocky)
+  when: ansible_facts['os_family'] == 'RedHat'
+  block:
+    # firewall-offline-cmd reads the permanent configuration without the daemon.
+    - name: Firewall | Read the firewalld configuration
+      ansible.builtin.command: "firewall-offline-cmd {{ item }}"
+      loop:
+        - --get-default-zone
+        - --zone=public --get-target
+        - --zone=public --list-services
+        - --zone=public --list-ports
+      register: verify_firewalld
+      changed_when: false
+
+    - name: Firewall | Assert SSH and HTTPS allowed, cockpit removed, unlisted traffic rejected
+      ansible.builtin.assert:
+        that:
+          - verify_firewalld.results[0].stdout == 'public'
+          - verify_firewalld.results[1].stdout in ['default', 'REJECT', 'DROP']
+          - "'ssh' in verify_firewalld.results[2].stdout.split()"
+          - "'cockpit' not in verify_firewalld.results[2].stdout.split()"
+          - "'443/tcp' in verify_firewalld.results[3].stdout.split()"
+        quiet: true
+
+    - name: Firewall | Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Firewall | Assert firewalld enabled at boot
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services['firewalld.service'].status == 'enabled'
+        quiet: true

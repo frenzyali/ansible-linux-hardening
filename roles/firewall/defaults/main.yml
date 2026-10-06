@@ -1,0 +1,29 @@
+---
+# Master switch for the whole role.
+firewall_enabled: true
+
+# Turn the firewall on and apply rules to the running kernel. Configuration is
+# always written; in containers (hardening_in_container) enforcement is
+# skipped because a container cannot own the host's packet filter.
+firewall_runtime_apply: "{{ not (hardening_in_container | default(false) | bool) }}"
+
+# SSH is always allowed on this port. Follows ssh_port when the ssh role's
+# variables are set, so the two cannot drift apart.
+firewall_ssh_port: "{{ ssh_port | default(22) }}"
+
+# Extra inbound allowlist. Everything else inbound is denied.
+#   - port: 443
+#     proto: tcp        # tcp (default) or udp
+#     comment: HTTPS
+firewall_allowed_ports: []
+
+# --- ufw (Ubuntu) -----------------------------------------------------------
+# "limit" denies a source that opens 6+ connections in 30 seconds.
+firewall_ufw_ssh_rule: limit
+firewall_ufw_logging: low
+
+# --- firewalld (Rocky) ------------------------------------------------------
+firewall_firewalld_zone: public
+# Services pre-enabled by the distribution that are removed from the zone.
+firewall_firewalld_services_remove:
+  - cockpit

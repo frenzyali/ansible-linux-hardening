@@ -1,0 +1,64 @@
+---
+# offline: true makes the module use firewall-offline-cmd when the daemon is
+# not running (containers, first boot) and the live daemon otherwise, so the
+# same tasks write the permanent configuration in both cases.
+- name: Firewall | Enable firewalld at boot
+  ansible.builtin.systemd_service:
+    name: firewalld
+    enabled: true
+  when: not firewall_check_mode_pending
+
+- name: Firewall | Start firewalld
+  ansible.builtin.systemd_service:
+    name: firewalld
+    state: started
+  when:
+    - firewall_runtime_apply | bool
+    - not firewall_check_mode_pending
+
+- name: Firewall | Always allow SSH
+  ansible.posix.firewalld:
+    zone: "{{ firewall_firewalld_zone }}"
+    service: "{{ 'ssh' if firewall_ssh_port | int == 22 else omit }}"
+    port: "{{ omit if firewall_ssh_port | int == 22 else (firewall_ssh_port | string) ~ '/tcp' }}"
+    permanent: true
+    immediate: "{{ firewall_runtime_apply | bool }}"
+    offline: true
+    state: enabled
+  when: not firewall_check_mode_pending
+
+- name: Firewall | Allow listed ports
+  ansible.posix.firewalld:
+    zone: "{{ firewall_firewalld_zone }}"
+    port: "{{ item.port }}/{{ item.proto | default('tcp') }}"
+    permanent: true
+    immediate: "{{ firewall_runtime_apply | bool }}"
+    offline: true
+    state: enabled
+  loop: "{{ firewall_allowed_ports }}"
+  loop_control:
+    label: "{{ item.port }}/{{ item.proto | default('tcp') }}"
+  when: not firewall_check_mode_pending
+
+- name: Firewall | Remove services the distribution pre-enables
+  ansible.posix.firewalld:
+    zone: "{{ firewall_firewalld_zone }}"
+    service: "{{ item }}"
+    permanent: true
+    immediate: "{{ firewall_runtime_apply | bool }}"
+    offline: true
+    state: disabled
+  loop: "{{ firewall_firewalld_services_remove }}"
+  when: not firewall_check_mode_pending
+
+# "default" rejects anything not allowed (default deny) but still lets ICMP
+# through, which path-MTU discovery and IPv6 neighbour discovery rely on.
+- name: Firewall | Reject unlisted inbound traffic in the zone
+  ansible.posix.firewalld:
+    zone: "{{ firewall_firewalld_zone }}"
+    target: default
+    permanent: true
+    offline: true
+    state: present
+  notify: Reload firewalld
+  when: not firewall_check_mode_pending

@@ -1,0 +1,50 @@
+---
+argument_specs:
+  main:
+    short_description: Default-deny inbound firewall with an allowlist (ufw or firewalld).
+    description:
+      - Ubuntu uses ufw (deny inbound and routed, allow outbound, rate-limited SSH).
+      - Rocky Linux uses firewalld (zone target rejects unlisted traffic, SSH and listed ports open).
+      - SSH is always allowed before the firewall is enabled, so a run cannot cut its own session.
+    author: Syed Ali Hussain
+    options:
+      firewall_enabled:
+        type: bool
+        description: Run the role at all.
+      firewall_runtime_apply:
+        type: bool
+        description: Enable the firewall and apply rules live. Disabled automatically when hardening_in_container is true.
+      firewall_ssh_port:
+        type: int
+        description: SSH port that is always allowed. Defaults to ssh_port, or 22.
+      firewall_allowed_ports:
+        type: list
+        elements: dict
+        description: Extra inbound ports to allow.
+        options:
+          port:
+            type: int
+            required: true
+            description: Port number.
+          proto:
+            type: str
+            choices: [tcp, udp]
+            description: Protocol (default tcp).
+          comment:
+            type: str
+            description: Rule comment (ufw only).
+      firewall_ufw_ssh_rule:
+        type: str
+        choices: [allow, limit]
+        description: ufw rule for SSH. limit rate-limits new connections per source.
+      firewall_ufw_logging:
+        type: str
+        choices: ["off", low, medium, high, full]
+        description: ufw log level.
+      firewall_firewalld_zone:
+        type: str
+        description: firewalld zone to configure.
+      firewall_firewalld_services_remove:
+        type: list
+        elements: str
+        description: Services removed from the zone.

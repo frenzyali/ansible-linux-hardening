@@ -1,0 +1,4 @@
+---
+firewall_os_backend: ufw
+firewall_os_packages:
+  - ufw

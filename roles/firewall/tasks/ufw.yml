@@ -1,0 +1,53 @@
+---
+# Default policies are written to /etc/default/ufw directly: the ufw module
+# cannot report a policy change while ufw is inactive, but lineinfile can
+# (and shows it in --diff).
+- name: Firewall | Set ufw default policies (deny inbound and routed)
+  ansible.builtin.lineinfile:
+    path: /etc/default/ufw
+    regexp: '^{{ item.key }}='
+    line: '{{ item.key }}="{{ item.value }}"'
+  loop:
+    - { key: DEFAULT_INPUT_POLICY, value: DROP }
+    - { key: DEFAULT_FORWARD_POLICY, value: DROP }
+    - { key: DEFAULT_OUTPUT_POLICY, value: ACCEPT }
+    - { key: IPV6, value: "yes" }
+  loop_control:
+    label: "{{ item.key }}"
+  notify: Reload ufw
+  when: not firewall_check_mode_pending
+
+- name: Firewall | Set ufw log level
+  ansible.builtin.lineinfile:
+    path: /etc/ufw/ufw.conf
+    regexp: '^LOGLEVEL='
+    line: "LOGLEVEL={{ firewall_ufw_logging }}"
+  notify: Reload ufw
+  when: not firewall_check_mode_pending
+
+- name: Firewall | Always allow SSH
+  community.general.ufw:
+    rule: "{{ firewall_ufw_ssh_rule }}"
+    port: "{{ firewall_ssh_port | string }}"
+    proto: tcp
+    comment: SSH (always allowed)
+  when: not firewall_check_mode_pending
+
+- name: Firewall | Allow listed ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port | string }}"
+    proto: "{{ item.proto | default('tcp') }}"
+    comment: "{{ item.comment | default(omit) }}"
+  loop: "{{ firewall_allowed_ports }}"
+  loop_control:
+    label: "{{ item.port }}/{{ item.proto | default('tcp') }}"
+  when: not firewall_check_mode_pending
+
+# Rules for SSH exist before this point, so enabling cannot cut the session.
+- name: Firewall | Enable ufw
+  community.general.ufw:
+    state: enabled
+  when:
+    - firewall_runtime_apply | bool
+    - not firewall_check_mode_pending

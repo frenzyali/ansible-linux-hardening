@@ -32,3 +32,6 @@
     - role: users
       become: true
       tags: [users]
+    - role: firewall
+      become: true
+      tags: [firewall]

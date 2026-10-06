@@ -1,0 +1,4 @@
+---
+# True only in check mode when the firewall package is not installed yet:
+# its tools cannot be simulated, so the rule steps are skipped.
+firewall_check_mode_pending: "{{ ansible_check_mode and (firewall_packages_install | default({})) is changed }}"

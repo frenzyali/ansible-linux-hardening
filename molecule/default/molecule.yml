@@ -18,6 +18,10 @@ platforms:
     pre_build_image: false
     command: /lib/systemd/systemd
     privileged: false
+    # The ufw module reads "ufw status", which needs iptables. NET_ADMIN only
+    # covers the container's own network namespace, never the host's rules.
+    capabilities:
+      - NET_ADMIN
     cgroupns_mode: host
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
