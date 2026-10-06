@@ -1,0 +1,84 @@
+---
+# All roles, through the real site.yml, on Ubuntu 24.04 and Rocky Linux 9.
+# Containers run systemd as PID 1 WITHOUT privileged mode: the host cgroup
+# namespace and a writable cgroup mount are enough for systemd on cgroup v2.
+dependency:
+  name: galaxy
+  options:
+    role-file: ${MOLECULE_PROJECT_DIRECTORY}/requirements.yml
+    requirements-file: ${MOLECULE_PROJECT_DIRECTORY}/requirements.yml
+
+driver:
+  name: docker
+
+platforms:
+  - name: alh-ubuntu2404
+    image: alh-ubuntu2404
+    dockerfile: ../shared/ubuntu2404.Dockerfile.j2
+    pre_build_image: false
+    command: /lib/systemd/systemd
+    privileged: false
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run:rw,exec
+      - /run/lock:rw
+      - /tmp:rw,exec
+    keep_volumes: false
+    groups:
+      - hardened
+
+  - name: alh-rocky9
+    image: alh-rocky9
+    dockerfile: ../shared/rocky9.Dockerfile.j2
+    pre_build_image: false
+    command: /usr/sbin/init
+    privileged: false
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run:rw,exec
+      - /run/lock:rw
+      - /tmp:rw,exec
+    keep_volumes: false
+    groups:
+      - hardened
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/roles
+  inventory:
+    group_vars:
+      hardened:
+        # Containers share the host kernel. Write every config file, but skip
+        # the steps that would change the kernel or need host capabilities
+        # (sysctl apply, audit rule load, firewall enable, clock control).
+        hardening_in_container: true
+        users_admins:
+          - name: opsadmin
+            comment: Molecule test admin
+            authorized_keys:
+              # Clearly fake placeholder; there is no private key for it.
+              - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPLACEHOLDERxxxxNOTxxxxAxxxxREALxxxxKEYxxxx molecule-placeholder"
+        firewall_allowed_ports:
+          - port: 443
+            proto: tcp
+            comment: HTTPS
+
+verifier:
+  name: ansible
+
+scenario:
+  test_sequence:
+    - dependency
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - idempotence
+    - verify
+    - destroy

@@ -1,0 +1,38 @@
+---
+- name: Base | Skip role when disabled
+  ansible.builtin.meta: end_role
+  when: not base_enabled | bool
+  tags: [always]
+
+- name: Base | Load OS family variables
+  ansible.builtin.include_vars: "{{ lookup('ansible.builtin.first_found', base_vars_files) }}"
+  vars:
+    base_vars_files:
+      files:
+        - "{{ ansible_facts['os_family'] }}.yml"
+      paths:
+        - "{{ role_path }}/vars"
+  tags: [always]
+
+- name: Base | Packages
+  ansible.builtin.import_tasks: packages.yml
+  tags: [base_packages]
+
+- name: Base | Time synchronisation
+  ansible.builtin.import_tasks: time.yml
+  when: base_chrony_enabled | bool
+  tags: [base_time]
+
+- name: Base | journald persistence
+  ansible.builtin.import_tasks: journald.yml
+  when: base_journald_enabled | bool
+  tags: [base_journald]
+
+- name: Base | Login banner
+  ansible.builtin.import_tasks: banner.yml
+  when: base_banner_enabled | bool
+  tags: [base_banner]
+
+- name: Base | Unneeded services
+  ansible.builtin.import_tasks: services.yml
+  tags: [base_services]

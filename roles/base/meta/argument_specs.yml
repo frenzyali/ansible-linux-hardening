@@ -1,0 +1,52 @@
+---
+argument_specs:
+  main:
+    short_description: Baseline packages, time sync, journald, banner and service cleanup.
+    description:
+      - Installs baseline packages and removes legacy clear-text clients.
+      - Configures chrony as a client only (no NTP or command port).
+      - Makes the systemd journal persistent and bounded.
+      - Writes the local and SSH login banners.
+      - Stops, disables and masks unneeded services if they exist.
+    author: Syed Ali Hussain
+    options:
+      base_enabled:
+        type: bool
+        description: Run the role at all.
+      base_runtime_apply:
+        type: bool
+        description: Start chronyd. Disabled automatically when hardening_in_container is true.
+      base_packages_extra:
+        type: list
+        elements: str
+        description: Extra packages to install.
+      base_packages_absent_extra:
+        type: list
+        elements: str
+        description: Extra packages to remove, on top of the per-OS list.
+      base_apt_cache_valid_time:
+        type: int
+        description: Seconds before the apt index is refreshed again.
+      base_chrony_enabled:
+        type: bool
+        description: Manage chrony.
+      base_chrony_sources:
+        type: list
+        elements: str
+        description: chrony source lines (e.g. "server ntp.example.com iburst"). Empty uses the distribution pool.
+      base_journald_enabled:
+        type: bool
+        description: Manage the journald drop-in.
+      base_journald_settings:
+        type: dict
+        description: Key/value pairs for the [Journal] section of the drop-in.
+      base_banner_enabled:
+        type: bool
+        description: Write /etc/issue and /etc/issue.net.
+      base_banner_text:
+        type: str
+        description: Banner text.
+      base_services_disabled:
+        type: list
+        elements: str
+        description: Unit names to stop, disable and mask if they exist.

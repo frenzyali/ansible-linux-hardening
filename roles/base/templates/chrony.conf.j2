@@ -1,0 +1,24 @@
+# {{ ansible_managed }}
+# Time sources
+{% for source in (base_chrony_sources or base_os_chrony_sources) %}
+{{ source }}
+{% endfor %}
+
+driftfile {{ base_os_chrony_driftfile }}
+keyfile {{ base_os_chrony_keyfile }}
+ntsdumpdir /var/lib/chrony
+logdir /var/log/chrony
+{% for line in base_os_chrony_extra_lines %}
+{{ line }}
+{% endfor %}
+
+# Step the clock on the first updates if it is far off, then slew.
+makestep 1.0 3
+# Keep the hardware clock in sync.
+rtcsync
+leapsectz right/UTC
+
+# Hardening: act as a client only. No NTP server port, no remote command port
+# (chronyc still works locally over the Unix socket).
+port 0
+cmdport 0

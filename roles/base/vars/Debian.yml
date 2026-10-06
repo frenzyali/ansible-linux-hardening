@@ -1,0 +1,28 @@
+---
+base_os_packages:
+  - chrony
+  - sudo
+  - ca-certificates
+
+base_os_packages_absent:
+  - telnet
+  - inetutils-telnet
+  - rsh-client
+  - talk
+  - nis
+  - tftp-hpa
+  - ftp
+  - xinetd
+
+base_os_chrony_service: chrony
+base_os_chrony_config: /etc/chrony/chrony.conf
+base_os_chrony_driftfile: /var/lib/chrony/chrony.drift
+base_os_chrony_keyfile: /etc/chrony/chrony.keys
+base_os_chrony_extra_lines:
+  - confdir /etc/chrony/conf.d
+  - sourcedir /run/chrony-dhcp
+  - sourcedir /etc/chrony/sources.d
+base_os_chrony_sources:
+  - pool ntp.ubuntu.com iburst maxsources 4
+  - pool 0.ubuntu.pool.ntp.org iburst maxsources 1
+  - pool 1.ubuntu.pool.ntp.org iburst maxsources 1

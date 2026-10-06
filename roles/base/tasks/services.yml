@@ -1,0 +1,18 @@
+---
+# Status query only (no state requested), so it never changes anything and
+# works in check mode. Units that are not installed report LoadState=not-found.
+- name: Base | Look up candidate units
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+  loop: "{{ base_services_disabled }}"
+  register: base_unit_status
+
+- name: Base | Stop, disable and mask unneeded services
+  ansible.builtin.systemd_service:
+    name: "{{ item.item }}"
+    state: stopped
+    enabled: false
+    masked: true
+  loop: "{{ base_unit_status.results | rejectattr('status.LoadState', 'equalto', 'not-found') | list }}"
+  loop_control:
+    label: "{{ item.item }}"

@@ -1,0 +1,19 @@
+---
+# Put things on the test hosts that the roles are expected to clean up, so
+# verify can prove the cleanup happened.
+- name: Prepare
+  hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Prepare | Refresh apt index
+      ansible.builtin.apt:
+        update_cache: true
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Prepare | Install a legacy client and an unneeded service
+      ansible.builtin.package:
+        name:
+          - telnet
+          - rpcbind
+        state: present

@@ -1,0 +1,4 @@
+---
+# Converge runs the real entry point, not a test-only copy of it.
+- name: Converge
+  ansible.builtin.import_playbook: ../../site.yml

@@ -1,0 +1,70 @@
+---
+- name: Base | Gather package facts
+  ansible.builtin.package_facts:
+
+- name: Base | Assert chrony installed and legacy clients removed
+  ansible.builtin.assert:
+    that:
+      - "'chrony' in ansible_facts.packages"
+      - "'telnet' not in ansible_facts.packages"
+      - "'inetutils-telnet' not in ansible_facts.packages"
+    quiet: true
+
+- name: Base | Read chrony config
+  ansible.builtin.slurp:
+    src: "{{ '/etc/chrony/chrony.conf' if ansible_facts['os_family'] == 'Debian' else '/etc/chrony.conf' }}"
+  register: verify_chrony
+
+- name: Base | Assert chrony is a client only
+  ansible.builtin.assert:
+    that:
+      - verify_chrony.content | b64decode is search('(?m)^pool ')
+      - verify_chrony.content | b64decode is search('(?m)^port 0$')
+      - verify_chrony.content | b64decode is search('(?m)^cmdport 0$')
+    quiet: true
+
+- name: Base | Gather service facts
+  ansible.builtin.service_facts:
+
+- name: Base | Read journald effective config
+  ansible.builtin.slurp:
+    src: /etc/systemd/journald.conf.d/60-hardening.conf
+  register: verify_journald
+
+- name: Base | Stat persistent journal directory
+  ansible.builtin.stat:
+    path: /var/log/journal
+  register: verify_journal_dir
+
+- name: Base | Assert journald persistent
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.services[('chrony' if ansible_facts['os_family'] == 'Debian' else 'chronyd') ~ '.service'].status == 'enabled'
+      - verify_journald.content | b64decode is search('(?m)^Storage=persistent$')
+      - verify_journal_dir.stat.isdir
+    quiet: true
+
+- name: Base | Read banners
+  ansible.builtin.slurp:
+    src: "{{ item }}"
+  loop:
+    - /etc/issue
+    - /etc/issue.net
+  register: verify_banners
+
+- name: Base | Assert banner present and free of OS details
+  ansible.builtin.assert:
+    that:
+      - item.content | b64decode is search('Authorized use only')
+      - item.content | b64decode is not search('(?i)ubuntu|rocky|\\\\[rmsv]')
+    quiet: true
+  loop: "{{ verify_banners.results }}"
+  loop_control:
+    label: "{{ item.source }}"
+
+- name: Base | Assert rpcbind is stopped and masked
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.services['rpcbind.service'].status == 'masked'
+      - ansible_facts.services['rpcbind.service'].state != 'running'
+    quiet: true

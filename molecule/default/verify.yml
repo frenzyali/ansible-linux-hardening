@@ -1,0 +1,11 @@
+---
+# Assertions on the converged hosts, one file per role. Every check reads the
+# real state of the container (files, sshd -T, package and unit state), not
+# the variables that were passed in.
+- name: Verify
+  hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Verify | base
+      ansible.builtin.import_tasks: verify/base.yml

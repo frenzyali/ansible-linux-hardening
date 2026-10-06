@@ -1,0 +1,13 @@
+# Test image only: Rocky Linux 9 with systemd as PID 1 and Python for Ansible.
+# Nothing security-related is preinstalled; the roles must install what they need.
+FROM rockylinux/rockylinux:9.8.20260525.0
+
+ENV container=docker
+
+RUN dnf -y install systemd python3 sudo procps-ng iproute \
+ && dnf clean all \
+ && rm -f /lib/systemd/system/multi-user.target.wants/getty* \
+          /lib/systemd/system/sysinit.target.wants/systemd-firstboot.service
+
+STOPSIGNAL SIGRTMIN+3
+CMD ["/usr/sbin/init"]

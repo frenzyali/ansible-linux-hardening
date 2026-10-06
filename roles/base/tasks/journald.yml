@@ -1,0 +1,26 @@
+---
+- name: Base | Create journald drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Base | Make the journal persistent and bounded
+  ansible.builtin.template:
+    src: journald.conf.j2
+    dest: /etc/systemd/journald.conf.d/60-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart journald
+
+# Storage=persistent only writes to disk if this directory exists.
+- name: Base | Create persistent journal directory
+  ansible.builtin.file:
+    path: /var/log/journal
+    state: directory
+    owner: root
+    group: systemd-journal
+    mode: "2755"

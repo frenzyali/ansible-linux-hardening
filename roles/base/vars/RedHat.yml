@@ -1,0 +1,23 @@
+---
+base_os_packages:
+  - chrony
+  - sudo
+  - ca-certificates
+
+base_os_packages_absent:
+  - telnet
+  - rsh
+  - talk
+  - ypbind
+  - tftp
+  - ftp
+  - xinetd
+
+base_os_chrony_service: chronyd
+base_os_chrony_config: /etc/chrony.conf
+base_os_chrony_driftfile: /var/lib/chrony/drift
+base_os_chrony_keyfile: /etc/chrony.keys
+base_os_chrony_extra_lines:
+  - sourcedir /run/chrony-dhcp
+base_os_chrony_sources:
+  - pool 2.rocky.pool.ntp.org iburst

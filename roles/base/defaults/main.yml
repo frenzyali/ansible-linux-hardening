@@ -1,0 +1,50 @@
+---
+# Master switch for the whole role.
+base_enabled: true
+
+# Steps that need a real host rather than a container (starting chronyd needs
+# CAP_SYS_TIME). Driven by the shared hardening_in_container flag.
+base_runtime_apply: "{{ not (hardening_in_container | default(false) | bool) }}"
+
+# --- Packages -------------------------------------------------------------
+# Installed on top of the per-OS baseline in vars/ (chrony, sudo, ...).
+base_packages_extra: []
+# Legacy clear-text clients and services are removed if present (per-OS list
+# in vars/). Add more package names here.
+base_packages_absent_extra: []
+# apt only: refresh the package index if it is older than this (seconds).
+base_apt_cache_valid_time: 3600
+
+# --- Time sync (chrony) ---------------------------------------------------
+base_chrony_enabled: true
+# Lines written verbatim as time sources, e.g. "server ntp.example.com iburst".
+# Empty: use the distribution's default pool (see vars/).
+base_chrony_sources: []
+
+# --- journald -------------------------------------------------------------
+base_journald_enabled: true
+# Written to /etc/systemd/journald.conf.d/60-hardening.conf
+base_journald_settings:
+  Storage: persistent
+  Compress: "yes"
+  SystemMaxUse: 1G
+  MaxRetentionSec: 3month
+
+# --- Login banner ---------------------------------------------------------
+base_banner_enabled: true
+# Written to /etc/issue (local console) and /etc/issue.net (SSH, used by the
+# ssh role). Avoid OS names and versions here: they help an attacker.
+base_banner_text: |
+  Authorized use only. Activity on this system is monitored and logged.
+  Disconnect now if you are not an authorized user.
+
+# --- Unneeded services ----------------------------------------------------
+# Units are stopped, disabled and masked if they exist; missing units are
+# ignored, so the list is safe to share across distributions.
+base_services_disabled:
+  - avahi-daemon.service
+  - avahi-daemon.socket
+  - cups.service
+  - cups.socket
+  - rpcbind.service
+  - rpcbind.socket

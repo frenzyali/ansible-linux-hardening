@@ -1,0 +1,16 @@
+---
+- name: Base | Refresh apt package index
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: "{{ base_apt_cache_valid_time }}"
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Base | Install baseline packages
+  ansible.builtin.package:
+    name: "{{ base_os_packages + base_packages_extra }}"
+    state: present
+
+- name: Base | Remove legacy clear-text clients and services
+  ansible.builtin.package:
+    name: "{{ base_os_packages_absent + base_packages_absent_extra }}"
+    state: absent

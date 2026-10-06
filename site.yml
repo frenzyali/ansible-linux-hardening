@@ -1,0 +1,31 @@
+---
+# Apply every hardening role to the "hardened" group.
+#
+# Always do a dry run first and keep a second SSH session open:
+#   ansible-playbook -i inventories/production/hosts.yml site.yml --check --diff
+#   ansible-playbook -i inventories/production/hosts.yml site.yml
+#
+# Order matters: users (admin + key) and firewall (SSH allowed) run before
+# ssh turns password logins off, so the ssh role's lockout guard can pass.
+- name: Check that the targets are supported
+  hosts: hardened
+  gather_facts: true
+  tags: [always]
+  tasks:
+    - name: Site | Assert a supported distribution
+      ansible.builtin.assert:
+        that:
+          - (ansible_facts['distribution'] == 'Ubuntu' and ansible_facts['distribution_version'] == '24.04')
+            or (ansible_facts['os_family'] == 'RedHat' and ansible_facts['distribution_major_version'] == '9')
+        fail_msg: >-
+          {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }} is not supported.
+          Supported: Ubuntu 24.04, Rocky Linux 9 (and other EL9 rebuilds, untested).
+        quiet: true
+
+- name: Harden Linux servers
+  hosts: hardened
+  gather_facts: false
+  roles:
+    - role: base
+      become: true
+      tags: [base]
