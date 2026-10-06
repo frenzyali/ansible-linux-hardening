@@ -1,0 +1,32 @@
+---
+- name: SSH | Skip role when disabled
+  ansible.builtin.meta: end_role
+  when: not ssh_enabled | bool
+  tags: [always]
+
+- name: SSH | Load OS family variables
+  ansible.builtin.include_vars: "{{ lookup('ansible.builtin.first_found', ssh_vars_files) }}"
+  vars:
+    ssh_vars_files:
+      files:
+        - "{{ ansible_facts['os_family'] }}.yml"
+      paths:
+        - "{{ role_path }}/vars"
+  tags: [always]
+
+# Runs before anything is installed or changed.
+- name: SSH | Lockout guard
+  ansible.builtin.import_tasks: preflight.yml
+  tags: [ssh_config, ssh_lockout_guard]
+
+- name: SSH | Install OpenSSH and host keys
+  ansible.builtin.import_tasks: install.yml
+  tags: [ssh_config]
+
+- name: SSH | Hardened sshd_config
+  ansible.builtin.import_tasks: config.yml
+  tags: [ssh_config]
+
+- name: SSH | Idle shell timeout
+  ansible.builtin.import_tasks: timeout.yml
+  tags: [ssh_idle_timeout]

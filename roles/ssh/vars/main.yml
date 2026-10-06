@@ -1,0 +1,4 @@
+---
+# True only in check mode when openssh-server is not installed yet: sshd
+# cannot validate or reload a config it does not have yet.
+ssh_check_mode_pending: "{{ ansible_check_mode and (ssh_packages_install | default({})) is changed }}"

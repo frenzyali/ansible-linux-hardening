@@ -15,3 +15,6 @@
 
     - name: Verify | firewall
       ansible.builtin.import_tasks: verify/firewall.yml
+
+    - name: Verify | ssh
+      ansible.builtin.import_tasks: verify/ssh.yml

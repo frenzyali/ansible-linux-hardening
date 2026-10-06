@@ -1,0 +1,68 @@
+---
+# Master switch for the whole role.
+ssh_enabled: true
+
+# --- Listener ---------------------------------------------------------------
+ssh_port: 22
+# Empty: listen on all addresses.
+ssh_listen_addresses: []
+
+# --- Authentication ---------------------------------------------------------
+ssh_permit_root_login: "no"
+# Turning this off is the main point of the role, and the main way to lock
+# yourself out. The lockout guard (tasks/preflight.yml) refuses to do it
+# unless an admin can still log in with a key.
+ssh_password_authentication: false
+# Only these users may log in. Defaults to the users role's admins; empty
+# means no AllowUsers line (every account may try).
+ssh_allow_users: "{{ users_admins | default([]) | map(attribute='name') | list }}"
+ssh_allow_groups: []
+ssh_max_auth_tries: 3
+ssh_max_sessions: 4
+ssh_login_grace_time: 30
+
+# --- Lockout guard ----------------------------------------------------------
+# Accounts the guard checks for a usable key: list of dicts with "name" and
+# optionally "authorized_keys" and "groups" (same shape as users_admins).
+ssh_lockout_guard_users: "{{ users_admins | default([]) }}"
+
+# --- Sessions ---------------------------------------------------------------
+# Drop a connection after interval x count seconds without a client response.
+ssh_client_alive_interval: 300
+ssh_client_alive_count_max: 2
+# Log out idle interactive shells after this many seconds (TMOUT, all logins).
+# 0 disables it.
+ssh_shell_timeout: 900
+ssh_allow_tcp_forwarding: false
+ssh_allow_agent_forwarding: false
+ssh_x11_forwarding: false
+# File shown before login ("" for none). Written by the base role.
+ssh_banner_file: /etc/issue.net
+# VERBOSE logs the fingerprint of the key used for each login.
+ssh_log_level: VERBOSE
+
+# --- Cryptography -----------------------------------------------------------
+# AEAD and CTR ciphers, encrypt-then-MAC SHA-2 MACs, and curve25519 /
+# post-quantum hybrid / >= 2048-bit DH key exchange. No SHA-1, no CBC.
+ssh_ciphers:
+  - chacha20-poly1305@openssh.com
+  - aes256-gcm@openssh.com
+  - aes128-gcm@openssh.com
+  - aes256-ctr
+  - aes192-ctr
+  - aes128-ctr
+ssh_macs:
+  - hmac-sha2-512-etm@openssh.com
+  - hmac-sha2-256-etm@openssh.com
+  - umac-128-etm@openssh.com
+ssh_kex_algorithms:
+  - sntrup761x25519-sha512@openssh.com
+  - curve25519-sha256
+  - curve25519-sha256@libssh.org
+  - diffie-hellman-group16-sha512
+  - diffie-hellman-group18-sha512
+  - diffie-hellman-group-exchange-sha256
+# Include /etc/ssh/sshd_config.d/*.conf AFTER the hardened settings, so
+# distribution and cloud-init drop-ins can add options but not weaken these
+# (sshd keeps the first value it reads for each option).
+ssh_include_drop_ins: true

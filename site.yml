@@ -35,3 +35,6 @@
     - role: firewall
       become: true
       tags: [firewall]
+    - role: ssh
+      become: true
+      tags: [ssh]

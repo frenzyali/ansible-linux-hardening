@@ -1,0 +1,28 @@
+---
+- name: SSH | Install OpenSSH server and client
+  ansible.builtin.package:
+    name: "{{ ssh_os_packages }}"
+    state: present
+  register: ssh_packages_install
+
+# Rocky Linux creates host keys on the first sshd start; sshd -t needs them
+# to validate the new config before that. ssh-keygen -A only creates the
+# key types that are missing.
+- name: SSH | Generate missing host keys
+  ansible.builtin.command: ssh-keygen -A
+  args:
+    creates: /etc/ssh/ssh_host_ed25519_key
+  when: not ssh_check_mode_pending
+
+# Privilege separation directory: sshd -t refuses to run without it, and on
+# Ubuntu it only exists after the service has started once.
+- name: SSH | Ensure the privilege separation directory exists
+  ansible.builtin.file:
+    path: /run/sshd
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - not ssh_check_mode_pending

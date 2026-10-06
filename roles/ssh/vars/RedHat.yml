@@ -1,0 +1,7 @@
+---
+ssh_os_packages:
+  - openssh-server
+  - openssh-clients
+ssh_os_service: sshd
+ssh_os_socket_unit: ""
+ssh_os_syslog_facility: AUTHPRIV

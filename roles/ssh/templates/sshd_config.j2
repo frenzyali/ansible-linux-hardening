@@ -1,0 +1,70 @@
+# {{ ansible_managed }}
+# Validated with "sshd -t" before it replaced the live file.
+#
+# sshd uses the FIRST value it reads for each option. Everything that matters
+# is set here, before the drop-in Include at the end, so distribution and
+# cloud-init drop-ins can add options but cannot weaken these.
+
+# Listener
+Port {{ ssh_port }}
+{% for address in ssh_listen_addresses %}
+ListenAddress {{ address }}
+{% endfor %}
+HostKey /etc/ssh/ssh_host_ed25519_key
+HostKey /etc/ssh/ssh_host_rsa_key
+
+# Cryptography
+KexAlgorithms {{ ssh_kex_algorithms | join(',') }}
+Ciphers {{ ssh_ciphers | join(',') }}
+MACs {{ ssh_macs | join(',') }}
+
+# Authentication
+PermitRootLogin {{ ssh_permit_root_login }}
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+PasswordAuthentication {{ 'yes' if ssh_password_authentication | bool else 'no' }}
+KbdInteractiveAuthentication no
+PermitEmptyPasswords no
+HostbasedAuthentication no
+IgnoreRhosts yes
+GSSAPIAuthentication no
+KerberosAuthentication no
+UsePAM yes
+StrictModes yes
+MaxAuthTries {{ ssh_max_auth_tries }}
+MaxSessions {{ ssh_max_sessions }}
+LoginGraceTime {{ ssh_login_grace_time }}
+MaxStartups 10:30:60
+{% if ssh_allow_users | length > 0 %}
+AllowUsers {{ ssh_allow_users | join(' ') }}
+{% endif %}
+{% if ssh_allow_groups | length > 0 %}
+AllowGroups {{ ssh_allow_groups | join(' ') }}
+{% endif %}
+
+# Sessions
+ClientAliveInterval {{ ssh_client_alive_interval }}
+ClientAliveCountMax {{ ssh_client_alive_count_max }}
+X11Forwarding {{ 'yes' if ssh_x11_forwarding | bool else 'no' }}
+AllowTcpForwarding {{ 'yes' if ssh_allow_tcp_forwarding | bool else 'no' }}
+AllowAgentForwarding {{ 'yes' if ssh_allow_agent_forwarding | bool else 'no' }}
+AllowStreamLocalForwarding no
+PermitTunnel no
+GatewayPorts no
+PermitUserEnvironment no
+AcceptEnv LANG LC_*
+PrintMotd no
+PrintLastLog yes
+{% if ssh_banner_file %}
+Banner {{ ssh_banner_file }}
+{% endif %}
+Subsystem sftp internal-sftp
+
+# Logging
+SyslogFacility {{ ssh_os_syslog_facility }}
+LogLevel {{ ssh_log_level }}
+{% if ssh_include_drop_ins | bool %}
+
+# Drop-ins last: they can only set options that are not set above.
+Include /etc/ssh/sshd_config.d/*.conf
+{% endif %}

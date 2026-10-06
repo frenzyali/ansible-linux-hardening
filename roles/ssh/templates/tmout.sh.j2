@@ -1,0 +1,7 @@
+# {{ ansible_managed }}
+# Log out interactive shells that are idle for {{ ssh_shell_timeout }} seconds.
+if [ "${TMOUT:-0}" = "0" ]; then
+  TMOUT={{ ssh_shell_timeout }}
+  readonly TMOUT
+  export TMOUT
+fi

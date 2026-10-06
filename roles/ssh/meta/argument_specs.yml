@@ -1,0 +1,91 @@
+---
+argument_specs:
+  main:
+    short_description: Hardened sshd_config with sshd -t validation and lockout protection.
+    description:
+      - Refuses to disable password logins unless an admin has a usable key (lockout guard).
+      - Writes the full sshd_config from a template; sshd -t validates it before it replaces the live file.
+      - No root login, keys only, AllowUsers/AllowGroups, modern ciphers/MACs/KEX, MaxAuthTries, idle timeouts.
+      - Handles Ubuntu 24.04 socket activation (ssh.socket) and RHEL-family host key generation.
+    author: Syed Ali Hussain
+    options:
+      ssh_enabled:
+        type: bool
+        description: Run the role at all.
+      ssh_port:
+        type: int
+        description: TCP port sshd listens on.
+      ssh_listen_addresses:
+        type: list
+        elements: str
+        description: ListenAddress values. Empty listens on all addresses.
+      ssh_permit_root_login:
+        type: str
+        choices: ["no", prohibit-password, forced-commands-only]
+        description: PermitRootLogin value.
+      ssh_password_authentication:
+        type: bool
+        description: Allow password logins. Disabling it is protected by the lockout guard.
+      ssh_allow_users:
+        type: list
+        elements: str
+        description: AllowUsers list. Empty omits the directive.
+      ssh_allow_groups:
+        type: list
+        elements: str
+        description: AllowGroups list. Empty omits the directive.
+      ssh_max_auth_tries:
+        type: int
+        description: MaxAuthTries.
+      ssh_max_sessions:
+        type: int
+        description: MaxSessions per connection.
+      ssh_login_grace_time:
+        type: int
+        description: Seconds allowed to complete authentication.
+      ssh_lockout_guard_users:
+        type: list
+        elements: dict
+        description: >-
+          Accounts the lockout guard checks, as dicts with name and optionally authorized_keys
+          and groups. Defaults to users_admins.
+      ssh_client_alive_interval:
+        type: int
+        description: Seconds between keepalive probes to the client.
+      ssh_client_alive_count_max:
+        type: int
+        description: Unanswered probes before the connection is dropped.
+      ssh_shell_timeout:
+        type: int
+        description: TMOUT for interactive shells, in seconds. 0 disables it.
+      ssh_allow_tcp_forwarding:
+        type: bool
+        description: AllowTcpForwarding.
+      ssh_allow_agent_forwarding:
+        type: bool
+        description: AllowAgentForwarding.
+      ssh_x11_forwarding:
+        type: bool
+        description: X11Forwarding.
+      ssh_banner_file:
+        type: str
+        description: Pre-login banner file. Empty disables the banner.
+      ssh_log_level:
+        type: str
+        choices: [QUIET, FATAL, ERROR, INFO, VERBOSE, DEBUG, DEBUG1, DEBUG2, DEBUG3]
+        description: LogLevel.
+      ssh_ciphers:
+        type: list
+        elements: str
+        description: Allowed ciphers.
+      ssh_macs:
+        type: list
+        elements: str
+        description: Allowed MACs.
+      ssh_kex_algorithms:
+        type: list
+        elements: str
+        description: Allowed key exchange algorithms.
+      ssh_include_drop_ins:
+        type: bool
+        description: Include /etc/ssh/sshd_config.d/*.conf after the hardened settings.

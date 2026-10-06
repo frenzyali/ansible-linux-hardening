@@ -1,0 +1,9 @@
+---
+ssh_os_packages:
+  - openssh-server
+  - openssh-client
+ssh_os_service: ssh
+# Ubuntu 24.04 starts sshd through socket activation; a generator derives the
+# socket's Port/ListenAddress from sshd_config at daemon-reload.
+ssh_os_socket_unit: ssh.socket
+ssh_os_syslog_facility: AUTH

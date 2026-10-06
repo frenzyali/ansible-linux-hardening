@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  role_name: ssh
+  namespace: frenzyali
+  author: Syed Ali Hussain
+  description: Hardened OpenSSH server config validated with sshd -t, with a guard that refuses to lock you out.
+  license: MIT
+  min_ansible_version: "2.18"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - noble
+    - name: EL
+      versions:
+        - "9"
+  galaxy_tags:
+    - security
+    - hardening
+    - ssh
+    - openssh
+
+dependencies: []

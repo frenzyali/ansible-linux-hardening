@@ -1,0 +1,92 @@
+---
+# sshd -T prints the configuration sshd would actually run with, after
+# includes and defaults, so this checks the effective values rather than
+# the template text.
+- name: SSH | Dump the effective sshd configuration
+  ansible.builtin.command: sshd -T
+  register: verify_sshd_t
+  changed_when: false
+
+- name: SSH | Assert hardened effective values
+  ansible.builtin.assert:
+    that:
+      - "'permitrootlogin no' in verify_sshd_t.stdout_lines"
+      - "'passwordauthentication no' in verify_sshd_t.stdout_lines"
+      - "'kbdinteractiveauthentication no' in verify_sshd_t.stdout_lines"
+      - "'permitemptypasswords no' in verify_sshd_t.stdout_lines"
+      - "'pubkeyauthentication yes' in verify_sshd_t.stdout_lines"
+      - "'maxauthtries 3' in verify_sshd_t.stdout_lines"
+      - "'clientaliveinterval 300' in verify_sshd_t.stdout_lines"
+      - "'clientalivecountmax 2' in verify_sshd_t.stdout_lines"
+      - "'x11forwarding no' in verify_sshd_t.stdout_lines"
+      - "'allowtcpforwarding no' in verify_sshd_t.stdout_lines"
+      - "'allowagentforwarding no' in verify_sshd_t.stdout_lines"
+      - "'gssapiauthentication no' in verify_sshd_t.stdout_lines"
+      - "'loglevel VERBOSE' in verify_sshd_t.stdout_lines"
+      - "'allowusers opsadmin' in verify_sshd_t.stdout_lines"
+      - "'banner /etc/issue.net' in verify_sshd_t.stdout_lines"
+      - "'ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr' in verify_sshd_t.stdout_lines"
+      - "'macs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com' in verify_sshd_t.stdout_lines"
+      - verify_sshd_t.stdout is search('(?m)^kexalgorithms (sntrup761x25519-sha512@openssh.com,)?curve25519-sha256,')
+      - verify_sshd_t.stdout is not search('(?m)^(ciphers|macs|kexalgorithms) .*(cbc|sha1|group1-|group14-sha1)')
+    quiet: true
+
+- name: SSH | Read the idle shell timeout
+  ansible.builtin.slurp:
+    src: /etc/profile.d/60-hardening-tmout.sh
+  register: verify_tmout
+
+- name: SSH | Assert idle shell timeout
+  ansible.builtin.assert:
+    that:
+      - verify_tmout.content | b64decode is search('TMOUT=900')
+    quiet: true
+
+# Functional check: a real client against the real daemon. A throwaway key is
+# created inside the container and added for opsadmin; it never leaves it.
+- name: SSH | Create a throwaway client key
+  ansible.builtin.command: ssh-keygen -q -t ed25519 -N '' -C verify-only -f /root/verify_key
+  args:
+    creates: /root/verify_key
+
+- name: SSH | Read the throwaway public key
+  ansible.builtin.slurp:
+    src: /root/verify_key.pub
+  register: verify_pub
+
+- name: SSH | Authorize the throwaway key for opsadmin
+  ansible.posix.authorized_key:
+    user: opsadmin
+    key: "{{ verify_pub.content | b64decode }}"
+
+- name: SSH | Log in as opsadmin with the key (must succeed)
+  ansible.builtin.command: >-
+    ssh -i /root/verify_key -o BatchMode=yes -o StrictHostKeyChecking=no
+    -o UserKnownHostsFile=/dev/null opsadmin@127.0.0.1 id -un
+  register: verify_key_login
+  changed_when: false
+
+- name: SSH | Try a password login as opsadmin (must be refused)
+  ansible.builtin.command: >-
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+    -o PubkeyAuthentication=no -o PreferredAuthentications=password,keyboard-interactive
+    opsadmin@127.0.0.1 true
+  register: verify_password_login
+  changed_when: false
+  failed_when: verify_password_login.rc == 0
+
+- name: SSH | Try root with the same key (must be refused)
+  ansible.builtin.command: >-
+    ssh -i /root/verify_key -o BatchMode=yes -o StrictHostKeyChecking=no
+    -o UserKnownHostsFile=/dev/null root@127.0.0.1 true
+  register: verify_root_login
+  changed_when: false
+  failed_when: verify_root_login.rc == 0
+
+- name: SSH | Assert login results
+  ansible.builtin.assert:
+    that:
+      - verify_key_login.stdout == 'opsadmin'
+      - verify_password_login.stderr is search('Permission denied \(publickey\)')
+      - verify_root_login.stderr is search('Permission denied')
+    quiet: true

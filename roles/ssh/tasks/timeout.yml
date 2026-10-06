@@ -1,0 +1,15 @@
+---
+- name: SSH | Log out idle shells
+  ansible.builtin.template:
+    src: tmout.sh.j2
+    dest: /etc/profile.d/60-hardening-tmout.sh
+    owner: root
+    group: root
+    mode: "0644"
+  when: ssh_shell_timeout | int > 0
+
+- name: SSH | Remove idle shell timeout when disabled
+  ansible.builtin.file:
+    path: /etc/profile.d/60-hardening-tmout.sh
+    state: absent
+  when: ssh_shell_timeout | int == 0

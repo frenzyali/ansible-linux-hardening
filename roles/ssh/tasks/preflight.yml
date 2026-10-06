@@ -1,0 +1,67 @@
+---
+# LOCKOUT PROTECTION
+# Disabling password logins on a host where no admin has a working key locks
+# everyone out. Before touching anything, require at least one non-root user
+# from ssh_lockout_guard_users who:
+#   - has a non-empty authorized_keys file on the host (in check mode, keys
+#     declared in the variables also count: the users role has not run yet), and
+#   - is allowed by AllowUsers / AllowGroups.
+- name: SSH | Lockout guard checks (password authentication is being disabled)
+  when: not ssh_password_authentication | bool
+  block:
+    - name: SSH | Read accounts and groups
+      ansible.builtin.getent:
+        database: "{{ item }}"
+      loop:
+        - passwd
+        - group
+
+    - name: SSH | Look at the admins' authorized_keys files
+      ansible.builtin.stat:
+        path: "{{ ansible_facts['getent_passwd'][item.name][4] }}/.ssh/authorized_keys"
+      loop: "{{ ssh_lockout_guard_users | selectattr('name', 'in', ansible_facts['getent_passwd']) | list }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: ssh_guard_key_files
+
+    - name: SSH | Start with no usable admin
+      ansible.builtin.set_fact:
+        ssh_guard_usable_admins: []
+
+    - name: SSH | Collect admins who can still log in with a key
+      ansible.builtin.set_fact:
+        ssh_guard_usable_admins: "{{ ssh_guard_usable_admins + [item.name] }}"
+      loop: "{{ ssh_lockout_guard_users }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when:
+        - item.name != 'root'
+        - ssh_guard_key_on_host or (ansible_check_mode and ssh_guard_keys_declared)
+        - ssh_allow_users | length == 0 or item.name in ssh_allow_users
+        - ssh_allow_groups | length == 0 or (ssh_guard_user_groups | intersect(ssh_allow_groups) | length > 0)
+      vars:
+        ssh_guard_key_stat: >-
+          {{ (ssh_guard_key_files.results | default([]) | selectattr('item.name', 'equalto', item.name)
+              | map(attribute='stat') | list + [{}]) | first }}
+        ssh_guard_key_on_host: "{{ (ssh_guard_key_stat.size | default(0)) > 0 }}"
+        ssh_guard_keys_declared: "{{ item.authorized_keys | default([]) | length > 0 }}"
+        ssh_guard_primary_gid: "{{ ansible_facts['getent_passwd'][item.name][2] if item.name in ansible_facts['getent_passwd'] else '' }}"
+        ssh_guard_user_groups: >-
+          {{ (ansible_facts['getent_group'] | dict2items
+              | selectattr('value.2', 'regex', '(^|,)' ~ item.name ~ '(,|$)') | map(attribute='key') | list)
+             + (ansible_facts['getent_group'] | dict2items
+              | selectattr('value.1', 'equalto', ssh_guard_primary_gid) | map(attribute='key') | list)
+             + (item.groups | default([]) if ansible_check_mode else []) }}
+
+    - name: SSH | Refuse to disable password logins without a usable key
+      ansible.builtin.assert:
+        that:
+          - ssh_guard_usable_admins | length > 0
+        fail_msg: >-
+          LOCKOUT PROTECTION: refusing to disable SSH password authentication on
+          {{ inventory_hostname }}. None of the users in ssh_lockout_guard_users
+          ({{ ssh_lockout_guard_users | map(attribute='name') | join(', ') or 'none configured' }})
+          has a non-empty authorized_keys file and is allowed by AllowUsers/AllowGroups.
+          Add a public key for an admin in users_admins (users role) and run it first,
+          or keep ssh_password_authentication: true for now. Nothing has been changed.
+        success_msg: "Key-based login available for: {{ ssh_guard_usable_admins | join(', ') }}"

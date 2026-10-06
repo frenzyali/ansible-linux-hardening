@@ -1,0 +1,21 @@
+---
+# sshd -t parses the candidate file (and its includes) and checks host keys.
+# If it fails, the live sshd_config is left untouched and the play stops.
+- name: SSH | Write hardened sshd_config (validated with sshd -t)
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: "0600"
+    validate: /usr/sbin/sshd -t -f %s
+    backup: true
+  notify: Apply sshd config
+  when: not ssh_check_mode_pending
+
+- name: SSH | Enable the SSH listener at boot
+  ansible.builtin.systemd_service:
+    name: "{{ ssh_os_socket_unit or ssh_os_service }}"
+    enabled: true
+    state: started
+  when: not ssh_check_mode_pending
