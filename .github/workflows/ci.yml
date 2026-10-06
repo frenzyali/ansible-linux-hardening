@@ -1,0 +1,85 @@
+---
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PY_COLORS: "1"
+  ANSIBLE_FORCE_COLOR: "1"
+  GITLEAKS_VERSION: "8.30.1"
+
+# Every step calls the same Makefile targets a user runs locally. Nothing in
+# this workflow touches a real server: Molecule only targets throwaway Docker
+# containers on the runner.
+jobs:
+  lint:
+    name: Lint, syntax check, gitleaks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout (full history for gitleaks)
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: yamllint --strict, ansible-lint (production profile), syntax check
+        run: make lint
+
+      - name: gitleaks (full history)
+        run: |
+          curl -sSfL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o checksums.txt \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          grep " gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz$" checksums.txt | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks git --redact --verbose .
+
+  molecule:
+    name: Molecule ${{ matrix.scenario }} (${{ matrix.label }})
+    needs: lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - scenario: default
+            label: ubuntu2404
+            target: test-ubuntu
+          - scenario: default
+            label: rocky9
+            target: test-rocky
+          - scenario: lockout
+            label: ubuntu2404 + rocky9
+            target: test-lockout
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Molecule test (check, converge, idempotence, verify, destroy)
+        run: make ${{ matrix.target }}
