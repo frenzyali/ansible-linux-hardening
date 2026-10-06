@@ -1,0 +1,48 @@
+---
+argument_specs:
+  main:
+    short_description: fail2ban with a journal-backed sshd jail.
+    description:
+      - Installs fail2ban (EPEL on Rocky Linux, without the sendmail meta package).
+      - Writes jail.d/60-hardening.local and tests the full configuration before reloading.
+      - Bans through ufw on Ubuntu and firewalld rich rules on Rocky Linux by default.
+    author: Syed Ali Hussain
+    options:
+      fail2ban_enabled:
+        type: bool
+        description: Run the role at all.
+      fail2ban_manage_epel:
+        type: bool
+        description: Install epel-release on Rocky Linux.
+      fail2ban_bantime:
+        type: str
+        description: Ban duration (fail2ban time syntax, e.g. 1h).
+      fail2ban_findtime:
+        type: str
+        description: Window in which failures are counted.
+      fail2ban_maxretry:
+        type: int
+        description: Failures within findtime that trigger a ban.
+      fail2ban_bantime_increment:
+        type: bool
+        description: Increase the ban time for repeat offenders.
+      fail2ban_bantime_maxtime:
+        type: str
+        description: Upper limit for incremented bans.
+      fail2ban_ignoreip:
+        type: list
+        elements: str
+        description: Addresses and CIDRs that are never banned.
+      fail2ban_sshd_enabled:
+        type: bool
+        description: Enable the sshd jail.
+      fail2ban_sshd_port:
+        type: int
+        description: SSH port for the sshd jail. Defaults to ssh_port, or 22.
+      fail2ban_sshd_mode:
+        type: str
+        choices: [normal, ddos, extra, aggressive]
+        description: sshd filter mode.
+      fail2ban_banaction:
+        type: str
+        description: Ban action. Empty uses ufw (Ubuntu) or firewallcmd-rich-rules (Rocky).

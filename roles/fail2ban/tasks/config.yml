@@ -1,0 +1,29 @@
+---
+# A .local file in jail.d overrides the packaged jail.conf and the distro's
+# jail.d/*.conf without editing either, so package upgrades never conflict.
+- name: Fail2ban | Configure defaults and the sshd jail
+  ansible.builtin.template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.d/60-hardening.local
+    owner: root
+    group: root
+    mode: "0644"
+  register: fail2ban_jail_config
+  notify: Reload fail2ban
+  when: not fail2ban_check_mode_pending
+
+# Parses every jail and filter as fail2ban-server would. Runs before the
+# reload handler, so a broken config stops the play instead of the service.
+- name: Fail2ban | Test the full configuration
+  ansible.builtin.command: fail2ban-client --test
+  changed_when: false
+  when:
+    - fail2ban_jail_config is changed
+    - not ansible_check_mode
+
+- name: Fail2ban | Enable and start fail2ban
+  ansible.builtin.systemd_service:
+    name: fail2ban
+    enabled: true
+    state: started
+  when: not fail2ban_check_mode_pending

@@ -38,3 +38,6 @@
     - role: ssh
       become: true
       tags: [ssh]
+    - role: fail2ban
+      become: true
+      tags: [fail2ban]

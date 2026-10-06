@@ -1,0 +1,18 @@
+---
+- name: Fail2ban | Enable EPEL (Rocky Linux)
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+  register: fail2ban_epel_install
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - fail2ban_manage_epel | bool
+
+# On a fresh Rocky host in check mode EPEL is only simulated, so the package
+# cannot be resolved yet; the install is skipped instead of failing the dry run.
+- name: Fail2ban | Install fail2ban
+  ansible.builtin.package:
+    name: "{{ fail2ban_os_packages }}"
+    state: present
+  register: fail2ban_packages_install
+  when: not (ansible_check_mode and fail2ban_epel_install is changed)

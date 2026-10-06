@@ -18,3 +18,6 @@
 
     - name: Verify | ssh
       ansible.builtin.import_tasks: verify/ssh.yml
+
+    - name: Verify | fail2ban
+      ansible.builtin.import_tasks: verify/fail2ban.yml

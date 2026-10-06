@@ -1,0 +1,27 @@
+---
+- name: Fail2ban | Test the full configuration
+  ansible.builtin.command: fail2ban-client --test
+  changed_when: false
+
+# The service really runs in the container (only bans cannot reach the
+# host's packet filter), so the effective values come from the live jail.
+- name: Fail2ban | Ask the running server about the sshd jail
+  ansible.builtin.command: "fail2ban-client {{ item }}"
+  loop:
+    - status sshd
+    - get sshd maxretry
+    - get sshd findtime
+    - get sshd bantime
+    - get sshd actions
+  register: verify_f2b
+  changed_when: false
+
+- name: Fail2ban | Assert sshd jail active with the configured limits
+  ansible.builtin.assert:
+    that:
+      - verify_f2b.results[0].stdout is search('Status for the jail. sshd')
+      - verify_f2b.results[1].stdout | trim == '5'
+      - verify_f2b.results[2].stdout | trim == '600'
+      - verify_f2b.results[3].stdout | trim == '3600'
+      - verify_f2b.results[4].stdout is search('ufw|firewallcmd-rich-rules')
+    quiet: true

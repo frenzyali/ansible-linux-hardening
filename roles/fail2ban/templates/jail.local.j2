@@ -1,0 +1,19 @@
+# {{ ansible_managed }}
+[DEFAULT]
+bantime  = {{ fail2ban_bantime }}
+findtime = {{ fail2ban_findtime }}
+maxretry = {{ fail2ban_maxretry }}
+{% if fail2ban_bantime_increment | bool %}
+bantime.increment = true
+bantime.maxtime   = {{ fail2ban_bantime_maxtime }}
+{% endif %}
+ignoreip = {{ fail2ban_ignoreip | join(' ') }}
+# Read the systemd journal: works without /var/log/auth.log or rsyslog.
+backend   = systemd
+banaction = {{ fail2ban_banaction or fail2ban_os_banaction }}
+banaction_allports = {{ fail2ban_banaction or fail2ban_os_banaction }}
+
+[sshd]
+enabled = {{ 'true' if fail2ban_sshd_enabled | bool else 'false' }}
+port    = {{ fail2ban_sshd_port }}
+mode    = {{ fail2ban_sshd_mode }}

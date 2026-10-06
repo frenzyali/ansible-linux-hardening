@@ -1,0 +1,28 @@
+---
+# Master switch for the whole role.
+fail2ban_enabled: true
+
+# Rocky Linux: fail2ban comes from EPEL. Set false if you mirror it yourself.
+fail2ban_manage_epel: true
+
+# A source is banned for bantime after maxretry failures within findtime.
+fail2ban_bantime: 1h
+fail2ban_findtime: 10m
+fail2ban_maxretry: 5
+# Repeat offenders get exponentially longer bans, capped at bantime_maxtime.
+fail2ban_bantime_increment: true
+fail2ban_bantime_maxtime: 1w
+# Never banned. Add your bastion or office ranges here.
+fail2ban_ignoreip:
+  - 127.0.0.1/8
+  - "::1"
+
+# sshd jail
+fail2ban_sshd_enabled: true
+fail2ban_sshd_port: "{{ ssh_port | default(22) }}"
+# normal, ddos, extra or aggressive (see filter.d/sshd.conf)
+fail2ban_sshd_mode: normal
+
+# Empty: the OS default from vars/ (ufw on Ubuntu, firewalld rich rules on
+# Rocky), so bans go through the firewall the firewall role manages.
+fail2ban_banaction: ""

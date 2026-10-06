@@ -1,0 +1,23 @@
+---
+- name: Fail2ban | Skip role when disabled
+  ansible.builtin.meta: end_role
+  when: not fail2ban_enabled | bool
+  tags: [always]
+
+- name: Fail2ban | Load OS family variables
+  ansible.builtin.include_vars: "{{ lookup('ansible.builtin.first_found', fail2ban_vars_files) }}"
+  vars:
+    fail2ban_vars_files:
+      files:
+        - "{{ ansible_facts['os_family'] }}.yml"
+      paths:
+        - "{{ role_path }}/vars"
+  tags: [always]
+
+- name: Fail2ban | Install
+  ansible.builtin.import_tasks: install.yml
+  tags: [fail2ban_install]
+
+- name: Fail2ban | Jails
+  ansible.builtin.import_tasks: config.yml
+  tags: [fail2ban_jails]
