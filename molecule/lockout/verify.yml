@@ -1,0 +1,50 @@
+---
+# The guard runs before the role installs or writes anything, so the host
+# must look exactly as prepare left it.
+- name: Verify
+  hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Verify | Fingerprint sshd_config now
+      ansible.builtin.stat:
+        path: /etc/ssh/sshd_config
+        checksum_algorithm: sha256
+      register: verify_sshd_config
+
+    - name: Verify | Read the fingerprint taken before converge
+      ansible.builtin.slurp:
+        src: /root/sshd_config.before.sha256
+      register: verify_before
+
+    - name: Verify | Dump the effective sshd configuration
+      ansible.builtin.command: sshd -T
+      register: verify_sshd_t
+      changed_when: false
+
+    - name: Verify | Assert sshd_config untouched and password logins still possible
+      ansible.builtin.assert:
+        that:
+          - verify_sshd_config.stat.checksum == (verify_before.content | b64decode | trim)
+          - "'passwordauthentication yes' in verify_sshd_t.stdout_lines"
+        quiet: true
+
+    - name: Verify | Look for files the role would have created
+      ansible.builtin.stat:
+        path: /etc/profile.d/60-hardening-tmout.sh
+      register: verify_tmout
+
+    - name: Verify | Assert the role stopped before its first change
+      ansible.builtin.assert:
+        that:
+          - not verify_tmout.stat.exists
+        quiet: true
+
+    - name: Verify | Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Verify | Assert the stock SSH server is still running
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services[('ssh' if ansible_facts['os_family'] == 'Debian' else 'sshd') ~ '.service'].state == 'running'
+        quiet: true

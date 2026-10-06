@@ -1,0 +1,80 @@
+---
+# Each case runs the real ssh role with password logins being disabled and
+# must be stopped by the lockout guard. A case "passes" only if the role
+# failed, at the guard task, with the LOCKOUT PROTECTION message. If the role
+# ever completes, the fail task after it trips and the rescue assertion
+# rejects that message, so the converge (and the scenario) fails.
+- name: Converge
+  hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - name: "Case 1: admin exists but has no key anywhere"
+      block:
+        - name: Case 1 | Run the ssh role
+          ansible.builtin.include_role:
+            name: ssh
+          vars:
+            ssh_password_authentication: false
+            ssh_allow_users: [deploy]
+            ssh_lockout_guard_users:
+              - name: deploy
+                authorized_keys: []
+
+        - name: Case 1 | The role must not get here
+          ansible.builtin.fail:
+            msg: "Guard did not trigger: the ssh role completed without a usable key."
+      rescue:
+        - name: Case 1 | Assert the lockout guard stopped the role
+          ansible.builtin.assert:
+            that:
+              - ansible_failed_task.name is search('Refuse to disable password logins')
+              - ansible_failed_result.msg is search('LOCKOUT PROTECTION')
+            quiet: true
+
+    - name: "Case 2: key declared in variables but never deployed to the host"
+      block:
+        - name: Case 2 | Run the ssh role
+          ansible.builtin.include_role:
+            name: ssh
+          vars:
+            ssh_password_authentication: false
+            ssh_allow_users: [deploy]
+            ssh_lockout_guard_users:
+              - name: deploy
+                authorized_keys:
+                  - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPLACEHOLDERxxxxNOTxxxxAxxxxREALxxxxKEYxxxx declared-only"
+
+        - name: Case 2 | The role must not get here
+          ansible.builtin.fail:
+            msg: "Guard did not trigger: a key that only exists in variables was accepted."
+      rescue:
+        - name: Case 2 | Assert the lockout guard stopped the role
+          ansible.builtin.assert:
+            that:
+              - ansible_failed_task.name is search('Refuse to disable password logins')
+              - ansible_failed_result.msg is search('LOCKOUT PROTECTION')
+            quiet: true
+
+    - name: "Case 3: user has a key on the host but AllowUsers excludes them"
+      block:
+        - name: Case 3 | Run the ssh role
+          ansible.builtin.include_role:
+            name: ssh
+          vars:
+            ssh_password_authentication: false
+            ssh_lockout_guard_users:
+              - name: keyholder
+            ssh_allow_users:
+              - deploy
+
+        - name: Case 3 | The role must not get here
+          ansible.builtin.fail:
+            msg: "Guard did not trigger: a user blocked by AllowUsers was counted."
+      rescue:
+        - name: Case 3 | Assert the lockout guard stopped the role
+          ansible.builtin.assert:
+            that:
+              - ansible_failed_task.name is search('Refuse to disable password logins')
+              - ansible_failed_result.msg is search('LOCKOUT PROTECTION')
+            quiet: true

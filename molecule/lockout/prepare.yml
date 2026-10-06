@@ -1,0 +1,49 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Prepare | Refresh apt index
+      ansible.builtin.apt:
+        update_cache: true
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Prepare | Install the distribution's stock OpenSSH server
+      ansible.builtin.package:
+        name: openssh-server
+        state: present
+
+    # A realistic starting point: the stock server is running (this also
+    # creates host keys on Rocky and /run/sshd on Ubuntu).
+    - name: Prepare | Start the stock SSH server
+      ansible.builtin.systemd_service:
+        name: "{{ 'ssh' if ansible_facts['os_family'] == 'Debian' else 'sshd' }}"
+        state: started
+
+    - name: Prepare | Create an admin without any SSH key
+      ansible.builtin.user:
+        name: deploy
+        shell: /bin/bash
+
+    - name: Prepare | Create a user that has a key on the host
+      ansible.builtin.user:
+        name: keyholder
+        shell: /bin/bash
+
+    - name: Prepare | Give keyholder a key
+      ansible.posix.authorized_key:
+        user: keyholder
+        key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPLACEHOLDERxxxxNOTxxxxAxxxxREALxxxxKEYxxxx lockout-placeholder"
+
+    - name: Prepare | Fingerprint the stock sshd_config
+      ansible.builtin.stat:
+        path: /etc/ssh/sshd_config
+        checksum_algorithm: sha256
+      register: prepare_sshd_config
+
+    - name: Prepare | Save the fingerprint for verify
+      ansible.builtin.copy:
+        content: "{{ prepare_sshd_config.stat.checksum }}\n"
+        dest: /root/sshd_config.before.sha256
+        mode: "0600"

@@ -1,0 +1,66 @@
+---
+# Negative test: the ssh role must refuse to turn password logins off when no
+# admin could still log in with a key, and must change nothing when it does.
+dependency:
+  name: galaxy
+  options:
+    role-file: ${MOLECULE_PROJECT_DIRECTORY}/requirements.yml
+    requirements-file: ${MOLECULE_PROJECT_DIRECTORY}/requirements.yml
+
+driver:
+  name: docker
+
+platforms:
+  - name: alh-lockout-ubuntu2404
+    image: alh-ubuntu2404
+    dockerfile: ../shared/ubuntu2404.Dockerfile.j2
+    pre_build_image: false
+    command: /lib/systemd/systemd
+    privileged: false
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run:rw,exec
+      - /run/lock:rw
+      - /tmp:rw,exec
+    keep_volumes: false
+
+  - name: alh-lockout-rocky9
+    image: alh-rocky9
+    dockerfile: ../shared/rocky9.Dockerfile.j2
+    pre_build_image: false
+    command: /usr/sbin/init
+    privileged: false
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run:rw,exec
+      - /run/lock:rw
+      - /tmp:rw,exec
+    keep_volumes: false
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/roles
+  inventory:
+    group_vars:
+      all:
+        hardening_in_container: true
+
+verifier:
+  name: ansible
+
+scenario:
+  test_sequence:
+    - dependency
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - idempotence
+    - verify
+    - destroy
