@@ -1,0 +1,26 @@
+---
+# Weekly update PRs for the pinned GitHub Actions and Python tooling.
+# Each ecosystem is grouped into one PR so CI (lint + Molecule) runs once per bump.
+# Not covered: GITLEAKS_VERSION in ci.yml, collections in requirements.yml and
+# hook revs in .pre-commit-config.yaml; bump those by hand.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      dev-tooling:
+        patterns: ["*"]
+    commit-message:
+      prefix: chore
